@@ -19,3 +19,7 @@ node_modules/
 # 临时文件
 *.tmp
 *.log
+
+# knights-knaves 数据集与可再生中间产物
+train-00000-of-00001.parquet
+bank/knights_src.json

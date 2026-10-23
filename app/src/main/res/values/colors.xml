@@ -7,4 +7,9 @@
     <color name="correct">#1E8E3E</color>
     <color name="wrong">#C0392B</color>
     <color name="background">#FFFFFF</color>
+
+    <!-- 卡片与分区底色：让区块之间有层次，不改变文档规定的文字色 -->
+    <color name="surface">#F7F8FA</color>
+    <color name="surface_press">#EEF0F4</color>
+    <color name="card_border">#E8EAED</color>
 </resources>

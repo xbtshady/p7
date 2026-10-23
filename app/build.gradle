@@ -19,9 +19,9 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    // 题库是纯 JSON 数据文件，不做压缩，保持可读（便于排查"app 读到的和仓库里的是否一致"）
+    // 题库上万道，中文文本压缩率很高，压缩进 APK 能省掉十来 MB
     androidResources {
-        noCompress 'json'
+        noCompress 'progress'
     }
 }
 

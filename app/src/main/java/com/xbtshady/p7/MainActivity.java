@@ -120,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
         page = Page.HOME;
         homeRoot = getLayoutInflater().inflate(R.layout.home, null);
         setContentView(homeRoot);
+        applySystemBarInsets(homeRoot);
 
         homeRoot.findViewById(R.id.btn_settings).setOnClickListener(v -> showSettings());
 
@@ -128,20 +129,25 @@ public class MainActivity extends AppCompatActivity {
 
         // 前端设计 §1：五级永远可点，没有锁定态
         for (int lv = 1; lv <= 5; lv++) {
-            container.addView(makeLevelRow(lv, container));
+            container.addView(makeLevelRow(lv));
         }
     }
 
-    private View makeLevelRow(int lv, ViewGroup parent) {
+    /** 难度行做成卡片：圆角 + 描边 + 按压反馈，卡片之间留 8dp */
+    private View makeLevelRow(int lv) {
         int pad = getResources().getDimensionPixelSize(R.dimen.margin_h);
-        int rowH = getResources().getDimensionPixelSize(R.dimen.row_h);
+        int gap = getResources().getDimensionPixelSize(R.dimen.gap_row);
 
         LinearLayout row = new LinearLayout(this);
-        row.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, rowH));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = gap;
+        row.setLayoutParams(lp);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(pad, 0, pad, 0);
+        row.setBackgroundResource(R.drawable.bg_row_press);
+        row.setPadding(pad, pad, pad, pad);
+        row.setMinimumHeight(getResources().getDimensionPixelSize(R.dimen.row_h));
 
         TextView left = new TextView(this);
         left.setText("L" + lv);
@@ -161,12 +167,6 @@ public class MainActivity extends AppCompatActivity {
         row.addView(right);
 
         row.setOnClickListener(v -> showList(lv));
-
-        if (lv < 5) {
-            View div = new View(this);
-            ((LinearLayout) parent).addView(div, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 1));
-        }
         return row;
     }
 
@@ -177,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
         level = lv;
         listRoot = getLayoutInflater().inflate(R.layout.list, null);
         setContentView(listRoot);
+        applySystemBarInsets(listRoot);
 
         TextView title = listRoot.findViewById(R.id.tv_title);
         title.setText("L" + lv);
@@ -271,6 +272,7 @@ public class MainActivity extends AppCompatActivity {
 
         questionRoot = getLayoutInflater().inflate(R.layout.question, null);
         setContentView(questionRoot);
+        applySystemBarInsets(questionRoot);
 
         TextView top = questionRoot.findViewById(R.id.tv_top);
         top.setText(q.id + " · 辅助：" + auxLabel());
@@ -494,11 +496,19 @@ public class MainActivity extends AppCompatActivity {
         renderResult(ok, signal);
     }
 
-    /** 结果 + 答案区（前端设计 §3.5） */
+    /**
+     * 结果区（前端设计 §3.5）。
+     *
+     * <p><b>答案默认不显示</b>：提交后只给判定和卡点，玩家想看答案再点开。
+     * 直接把答案摊在面前会让人没有回推的余地，与"脑内推演"的练习目的相悖。
+     */
     private void renderResult(boolean ok, String signal) {
         ViewGroup box = questionRoot.findViewById(R.id.box_result);
+        ViewGroup answerBox = questionRoot.findViewById(R.id.box_answer);
         box.setVisibility(View.VISIBLE);
         box.removeAllViews();
+        answerBox.setVisibility(View.GONE);
+        answerBox.removeAllViews();
 
         // 第一段 判定：只四个字，不给分数、不给用时
         TextView verdict = new TextView(this);
@@ -513,39 +523,78 @@ public class MainActivity extends AppCompatActivity {
             box.addView(buildStuckSection());
         }
 
-        // 第三段 答案
-        int gap = getResources().getDimensionPixelSize(R.dimen.gap_block);
+        // 第三段 查看答案（答案折叠在这里）
+        Button showAnswer = new Button(this);
+        showAnswer.setText(R.string.show_answer);
+        showAnswer.setBackgroundResource(R.drawable.bg_button);
+        showAnswer.setTextColor(getResources().getColor(android.R.color.white));
+        showAnswer.setAllCaps(false);
+        showAnswer.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                getResources().getDimensionPixelSize(R.dimen.button_h));
+        alp.topMargin = getResources().getDimensionPixelSize(R.dimen.gap_block);
+        showAnswer.setLayoutParams(alp);
+        showAnswer.setOnClickListener(v -> {
+            if (answerBox.getVisibility() == View.VISIBLE) {
+                answerBox.setVisibility(View.GONE);
+                showAnswer.setText(R.string.show_answer);
+            } else {
+                renderAnswerInto(answerBox);
+                answerBox.setVisibility(View.VISIBLE);
+                showAnswer.setText(R.string.hide_answer);
+            }
+        });
+        box.addView(showAnswer);
+
+        // 第四段 下一题 / 重做本题
+        box.addView(buildActionRow());
+
+        Button submit = questionRoot.findViewById(R.id.btn_submit);
+        submit.setEnabled(false);
+    }
+
+    /** 答案内容：标题 + 按题型渲染的完整答案 */
+    private void renderAnswerInto(ViewGroup box) {
+        box.removeAllViews();
+        int gap = getResources().getDimensionPixelSize(R.dimen.gap_row);
+
         TextView title = new TextView(this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = gap;
-        title.setLayoutParams(lp);
         title.setText(R.string.answer_title);
         title.setTextColor(getColor(R.color.text_primary));
         title.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
         title.setTypeface(null, Typeface.BOLD);
         box.addView(title);
 
-        ViewGroup answerBox = new LinearLayout(this);
-        answerBox.setLayoutParams(new LinearLayout.LayoutParams(
+        ViewGroup body = new LinearLayout(this);
+        body.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        ((LinearLayout) answerBox).setOrientation(LinearLayout.VERTICAL);
-        box.addView(answerBox);
-        renderer.renderSolution(current, answerBox, getLayoutInflater());
+        ((LinearLayout) body).setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams blp = (LinearLayout.LayoutParams) body.getLayoutParams();
+        blp.topMargin = gap;
+        body.setLayoutParams(blp);
+        box.addView(body);
+        renderer.renderSolution(current, body, getLayoutInflater());
+    }
 
-        // 第四段 按钮
+    /** 下一题 / 重做本题 */
+    private View buildActionRow() {
+        int gap = getResources().getDimensionPixelSize(R.dimen.margin_h);
+        int rowGap = getResources().getDimensionPixelSize(R.dimen.gap_row);
+
         LinearLayout btns = new LinearLayout(this);
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        blp.topMargin = gap;
+        blp.topMargin = rowGap;
         btns.setLayoutParams(blp);
         btns.setOrientation(LinearLayout.HORIZONTAL);
 
         Button next = new Button(this);
         next.setText(R.string.next);
-        next.setBackgroundResource(R.drawable.bg_button);
-        next.setTextColor(getResources().getColor(android.R.color.white));
+        next.setBackgroundResource(R.drawable.bg_button_secondary);
+        next.setTextColor(getColor(R.color.text_primary));
         next.setAllCaps(false);
+        next.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
         LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(0,
                 getResources().getDimensionPixelSize(R.dimen.button_h), 1f);
         next.setLayoutParams(nlp);
@@ -557,21 +606,15 @@ public class MainActivity extends AppCompatActivity {
         redo.setBackgroundResource(R.drawable.bg_button_secondary);
         redo.setTextColor(getColor(R.color.text_primary));
         redo.setAllCaps(false);
+        redo.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(0,
                 getResources().getDimensionPixelSize(R.dimen.button_h), 1f);
-        rlp.setMarginStart(getResources().getDimensionPixelSize(R.dimen.margin_h));
+        rlp.setMarginStart(gap);
         redo.setLayoutParams(rlp);
         redo.setOnClickListener(v -> redoQuestion());
         btns.addView(redo);
 
-        box.addView(btns);
-
-        Button submit = questionRoot.findViewById(R.id.btn_submit);
-        if (timedOut) {
-            // 超时后提交按钮已换成"重做本题"，这里不再覆盖
-            return;
-        }
-        submit.setEnabled(false);
+        return btns;
     }
 
     /** 卡点三选一：选中即记录，不必提交，可随时改（前端设计 §3.5） */
@@ -719,5 +762,24 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         cancelTimer();
         super.onDestroy();
+    }
+
+    /**
+     * 状态栏 / 导航栏内边距。
+     *
+     * <p>Android 15 对 targetSdk 35+ 强制 edge-to-edge，windowOptOutEdgeToEdgeEnforcement
+     * 在部分系统上不生效（真机实测内容仍被状态栏盖住），所以不依赖主题属性，
+     * 直接把系统栏 + 刘海的内边距套到根布局上 —— 所有版本行为一致。
+     */
+    private void applySystemBarInsets(View root) {
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            androidx.core.graphics.Insets bars = insets.getInsets(
+                    androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                            | androidx.core.view.WindowInsetsCompat.Type.displayCutout());
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return androidx.core.view.WindowInsetsCompat.CONSUMED;
+        });
+        // view 尚未 attach 时 listener 会在 attach 后收到回调，这里主动触发一次
+        androidx.core.view.ViewCompat.requestApplyInsets(root);
     }
 }

@@ -4,6 +4,19 @@
         <item name="android:windowBackground">@color/background</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:statusBarColor">@color/background</item>
+        <!-- API 35+ 对 targetSdk 35+ 强制 edge-to-edge，内容会被状态栏盖住。
+             p7 是全屏单栏布局，没有做系统栏适配，先按旧行为处理。 -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+
+    <!-- 顶部条：白底 + 底部描边 -->
+    <style name="TopBar">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">@dimen/row_h</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">@dimen/margin_h</item>
+        <item name="android:paddingEnd">@dimen/margin_h</item>
     </style>
 
     <!-- 前端设计文档 §7：按钮高 48dp、圆角 8dp -->

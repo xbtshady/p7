@@ -6,13 +6,7 @@
     android:orientation="vertical">
 
     <!-- 顶部条：题号 · 辅助档 ｜ 退出 + 倒计时（挑战档） -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/row_h"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="@dimen/margin_h"
-        android:paddingEnd="@dimen/margin_h">
+    <LinearLayout style="@style/TopBar">
 
         <TextView
             android:id="@+id/tv_top"
@@ -62,12 +56,14 @@
             android:paddingEnd="@dimen/margin_h"
             android:paddingBottom="@dimen/margin_h">
 
-            <!-- 题面区 -->
+            <!-- 题面区：卡片底，与作答区区分开 -->
             <LinearLayout
                 android:id="@+id/box_prompt"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical" />
+                android:background="@drawable/bg_card"
+                android:orientation="vertical"
+                android:padding="@dimen/margin_h" />
 
             <!-- 第一步输入区（仅挑战档） -->
             <LinearLayout
@@ -91,17 +87,28 @@
                 style="@style/Button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/margin_h"
+                android:layout_marginTop="@dimen/gap_block"
                 android:text="@string/submit"
                 android:visibility="gone" />
 
-            <!-- 结果 + 答案区：提交后展开 -->
+            <!-- 结果区：判定 + 卡点 + 操作按钮。答案默认不显示 -->
             <LinearLayout
                 android:id="@+id/box_result"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/gap_block"
                 android:orientation="vertical"
+                android:visibility="gone" />
+
+            <!-- 答案区：点"查看答案"后才展开 -->
+            <LinearLayout
+                android:id="@+id/box_answer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/gap_block"
+                android:background="@drawable/bg_card"
+                android:orientation="vertical"
+                android:padding="@dimen/margin_h"
                 android:visibility="gone" />
 
         </LinearLayout>

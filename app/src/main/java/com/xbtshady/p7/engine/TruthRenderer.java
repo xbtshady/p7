@@ -122,9 +122,9 @@ public final class TruthRenderer implements QuestionRenderer {
             nameTv.setTextColor(box.getContext().getColor(R.color.text_primary));
             nameTv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
                     box.getContext().getResources().getDimension(R.dimen.text_body));
+            // 名字自适应占满剩余宽度 —— 题库里有人名 5 个字（塞巴斯蒂安），固定宽会截断
             nameTv.setLayoutParams(new LinearLayout.LayoutParams(
-                    box.getContext().getResources().getDimensionPixelSize(R.dimen.margin_h) * 3,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             row.addView(nameTv);
 
             // 真 / 假 两个并排方框（前端设计 §7：选中填强调色）

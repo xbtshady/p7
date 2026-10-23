@@ -18,7 +18,10 @@
     <string name="stuck_convert">框架没转</string>
     <string name="stuck_convert_note">条件没转成计数</string>
 
+    <string name="back_home">← 首页</string>
     <string name="list_hint">点题可重做，记录只增不覆盖</string>
+    <string name="show_answer">查看答案</string>
+    <string name="hide_answer">收起答案</string>
     <string name="random">随机一题</string>
     <string name="first_step_hint">用一句话说出你的第一步</string>
     <string name="first_step_start">开始</string>
