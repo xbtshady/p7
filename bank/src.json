@@ -1,5 +1,5 @@
 {
-  "bankVersion": 2,
+  "bankVersion": 3,
   "questions": [
     {
       "id": "L1-T1-001",
@@ -8,9 +8,33 @@
       "prototype": "three-with-count",
       "intendedLiars": 2,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "liar", "target": "C"}]},
-        {"name": "C", "claims": [{"kind": "liar", "target": "A"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        }
       ]
     },
     {
@@ -20,9 +44,33 @@
       "prototype": "cycle-accuse",
       "intendedLiars": 1,
       "people": [
-        {"name": "A", "claims": [{"kind": "liar", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "C"}]},
-        {"name": "C", "claims": [{"kind": "liar", "target": "A"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        }
       ]
     },
     {
@@ -32,9 +80,33 @@
       "prototype": "exactly-one-true",
       "intendedLiars": 1,
       "people": [
-        {"name": "A", "claims": [{"kind": "liar", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "liar", "target": "C"}]},
-        {"name": "C", "claims": [{"kind": "honest", "target": "A"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        }
       ]
     },
     {
@@ -44,10 +116,42 @@
       "prototype": "who-is-criminal",
       "intendedLiars": 1,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "C", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "D", "claims": [{"kind": "liar", "target": "C"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "C"
+            }
+          ]
+        }
       ]
     },
     {
@@ -57,10 +161,42 @@
       "prototype": "knights-knaves",
       "intendedLiars": 3,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "C", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "D", "claims": [{"kind": "liar", "target": "C"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "C"
+            }
+          ]
+        }
       ]
     },
     {
@@ -70,10 +206,42 @@
       "prototype": "cycle-accuse",
       "intendedLiars": 3,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "C", "claims": [{"kind": "liar", "target": "D"}]},
-        {"name": "D", "claims": [{"kind": "honest", "target": "A"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "D"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        }
       ]
     },
     {
@@ -83,10 +251,42 @@
       "prototype": "who-is-criminal",
       "intendedLiars": 3,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "C", "claims": [{"kind": "liar", "target": "A"}]},
-        {"name": "D", "claims": [{"kind": "liar", "target": "C"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "C"
+            }
+          ]
+        }
       ]
     },
     {
@@ -96,10 +296,42 @@
       "prototype": "knights-knaves",
       "intendedLiars": 1,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "C", "claims": [{"kind": "liar", "target": "B"}]},
-        {"name": "D", "claims": [{"kind": "liar", "target": "C"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "C"
+            }
+          ]
+        }
       ]
     },
     {
@@ -109,10 +341,58 @@
       "prototype": "nested-statements",
       "intendedLiars": 3,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}, {"kind": "honest", "target": "C"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}, {"kind": "honest", "target": "C"}]},
-        {"name": "C", "claims": [{"kind": "honest", "target": "A"}, {"kind": "honest", "target": "B"}]},
-        {"name": "D", "claims": [{"kind": "liar", "target": "A"}, {"kind": "liar", "target": "B"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            },
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            },
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            },
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            },
+            {
+              "kind": "liar",
+              "target": "B"
+            }
+          ]
+        }
       ]
     },
     {
@@ -122,10 +402,58 @@
       "prototype": "nested-statements",
       "intendedLiars": 1,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}, {"kind": "honest", "target": "C"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}, {"kind": "honest", "target": "C"}]},
-        {"name": "C", "claims": [{"kind": "honest", "target": "A"}, {"kind": "liar", "target": "D"}]},
-        {"name": "D", "claims": [{"kind": "liar", "target": "A"}, {"kind": "liar", "target": "C"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            },
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            },
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            },
+            {
+              "kind": "liar",
+              "target": "D"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            },
+            {
+              "kind": "liar",
+              "target": "C"
+            }
+          ]
+        }
       ]
     },
     {
@@ -135,23 +463,82 @@
       "prototype": "nested-statements",
       "intendedLiars": 1,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}, {"kind": "honest", "target": "C"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}, {"kind": "honest", "target": "C"}]},
-        {"name": "C", "claims": [{"kind": "honest", "target": "A"}, {"kind": "honest", "target": "B"}]},
-        {"name": "D", "claims": [{"kind": "liar", "target": "A"}, {"kind": "liar", "target": "C"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            },
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            },
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            },
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            },
+            {
+              "kind": "liar",
+              "target": "C"
+            }
+          ]
+        }
       ]
     },
-
     {
       "id": "L1-T2-001",
       "type": "ledger",
       "level": 1,
       "prototype": "repeat-trade",
       "question": "total",
-      "open": {"cash": 5000, "hold": 1, "price": 800},
+      "open": {
+        "cash": 5000,
+        "hold": 1,
+        "price": 800
+      },
       "tx": [
-        {"op": "buy", "qty": 1, "price": 900},
-        {"op": "sell", "qty": 1, "price": 1200}
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 900
+        },
+        {
+          "op": "sell",
+          "qty": 1,
+          "price": 1200
+        }
       ],
       "closePrice": 1000
     },
@@ -161,10 +548,22 @@
       "level": 1,
       "prototype": "repeat-trade",
       "question": "net",
-      "open": {"cash": 3000, "hold": 2, "price": 500},
+      "open": {
+        "cash": 3000,
+        "hold": 2,
+        "price": 500
+      },
       "tx": [
-        {"op": "buy", "qty": 1, "price": 600},
-        {"op": "sell", "qty": 1, "price": 700}
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 600
+        },
+        {
+          "op": "sell",
+          "qty": 1,
+          "price": 700
+        }
       ],
       "closePrice": 650
     },
@@ -174,11 +573,27 @@
       "level": 2,
       "prototype": "end-total",
       "question": "total",
-      "open": {"cash": 4000, "hold": 1, "price": 900},
+      "open": {
+        "cash": 4000,
+        "hold": 1,
+        "price": 900
+      },
       "tx": [
-        {"op": "buy", "qty": 1, "price": 950},
-        {"op": "sell", "qty": 2, "price": 1100},
-        {"op": "buy", "qty": 1, "price": 1000}
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 950
+        },
+        {
+          "op": "sell",
+          "qty": 2,
+          "price": 1100
+        },
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 1000
+        }
       ],
       "closePrice": 1050
     },
@@ -188,10 +603,22 @@
       "level": 2,
       "prototype": "end-total",
       "question": "net",
-      "open": {"cash": 6000, "hold": 2, "price": 1000},
+      "open": {
+        "cash": 6000,
+        "hold": 2,
+        "price": 1000
+      },
       "tx": [
-        {"op": "buy", "qty": 2, "price": 1100},
-        {"op": "sell", "qty": 3, "price": 1250}
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 1100
+        },
+        {
+          "op": "sell",
+          "qty": 3,
+          "price": 1250
+        }
       ],
       "closePrice": 1150
     },
@@ -201,10 +628,22 @@
       "level": 3,
       "prototype": "buy-back",
       "question": "net",
-      "open": {"cash": 8000, "hold": 3, "price": 600},
+      "open": {
+        "cash": 8000,
+        "hold": 3,
+        "price": 600
+      },
       "tx": [
-        {"op": "sell", "qty": 2, "price": 700},
-        {"op": "buy", "qty": 2, "price": 800}
+        {
+          "op": "sell",
+          "qty": 2,
+          "price": 700
+        },
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 800
+        }
       ],
       "closePrice": 700
     },
@@ -214,9 +653,17 @@
       "level": 3,
       "prototype": "price-vs-hold",
       "question": "net",
-      "open": {"cash": 6000, "hold": 2, "price": 1000},
+      "open": {
+        "cash": 6000,
+        "hold": 2,
+        "price": 1000
+      },
       "tx": [
-        {"op": "sell", "qty": 1, "price": 1200}
+        {
+          "op": "sell",
+          "qty": 1,
+          "price": 1200
+        }
       ],
       "closePrice": 1500
     },
@@ -226,11 +673,29 @@
       "level": 4,
       "prototype": "batch-buy",
       "question": "total",
-      "open": {"cash": 9000, "hold": 1, "price": 700},
+      "open": {
+        "cash": 9000,
+        "hold": 1,
+        "price": 700
+      },
       "tx": [
-        {"op": "buy", "qty": 2, "price": 800, "note": "第一批"},
-        {"op": "buy", "qty": 1, "price": 900, "note": "第二批"},
-        {"op": "sell", "qty": 2, "price": 1000}
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 800,
+          "note": "第一批"
+        },
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 900,
+          "note": "第二批"
+        },
+        {
+          "op": "sell",
+          "qty": 2,
+          "price": 1000
+        }
       ],
       "closePrice": 950
     },
@@ -240,9 +705,19 @@
       "level": 4,
       "prototype": "swap",
       "question": "total",
-      "open": {"cash": 5000, "hold": 3, "price": 400},
+      "open": {
+        "cash": 5000,
+        "hold": 3,
+        "price": 400
+      },
       "tx": [
-        {"op": "swap", "give": 2, "take": 1, "cash": 300, "note": "补差价"}
+        {
+          "op": "swap",
+          "give": 2,
+          "take": 1,
+          "cash": 300,
+          "note": "补差价"
+        }
       ],
       "closePrice": 1200
     },
@@ -252,12 +727,33 @@
       "level": 5,
       "prototype": "mixed",
       "question": "total",
-      "open": {"cash": 12000, "hold": 2, "price": 1000},
+      "open": {
+        "cash": 12000,
+        "hold": 2,
+        "price": 1000
+      },
       "tx": [
-        {"op": "buy", "qty": 1, "price": 1100},
-        {"op": "sell", "qty": 2, "price": 1300},
-        {"op": "swap", "give": 1, "take": 2, "cash": 500},
-        {"op": "sell", "qty": 1, "price": 1200}
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 1100
+        },
+        {
+          "op": "sell",
+          "qty": 2,
+          "price": 1300
+        },
+        {
+          "op": "swap",
+          "give": 1,
+          "take": 2,
+          "cash": 500
+        },
+        {
+          "op": "sell",
+          "qty": 1,
+          "price": 1200
+        }
       ],
       "closePrice": 1250
     },
@@ -267,11 +763,27 @@
       "level": 5,
       "prototype": "mixed",
       "question": "net",
-      "open": {"cash": 7000, "hold": 4, "price": 500},
+      "open": {
+        "cash": 7000,
+        "hold": 4,
+        "price": 500
+      },
       "tx": [
-        {"op": "sell", "qty": 2, "price": 600},
-        {"op": "buy", "qty": 3, "price": 550},
-        {"op": "sell", "qty": 3, "price": 700}
+        {
+          "op": "sell",
+          "qty": 2,
+          "price": 600
+        },
+        {
+          "op": "buy",
+          "qty": 3,
+          "price": 550
+        },
+        {
+          "op": "sell",
+          "qty": 3,
+          "price": 700
+        }
       ],
       "closePrice": 650
     },
@@ -282,10 +794,42 @@
       "prototype": "multi-constraint",
       "intendedLiars": 2,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "C", "claims": [{"kind": "liar", "target": "A"}]},
-        {"name": "D", "claims": [{"kind": "count", "k": 2}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "count",
+              "k": 2
+            }
+          ]
+        }
       ]
     },
     {
@@ -295,10 +839,49 @@
       "prototype": "conditional",
       "intendedLiars": 1,
       "people": [
-        {"name": "A", "claims": [{"kind": "cond", "if": {"kind": "honest", "target": "B"}, "then": {"kind": "liar", "target": "C"}}]},
-        {"name": "B", "claims": [{"kind": "liar", "target": "A"}]},
-        {"name": "C", "claims": [{"kind": "liar", "target": "A"}]},
-        {"name": "D", "claims": [{"kind": "liar", "target": "A"}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "cond",
+              "if": {
+                "kind": "honest",
+                "target": "B"
+              },
+              "then": {
+                "kind": "liar",
+                "target": "C"
+              }
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        }
       ]
     },
     {
@@ -308,11 +891,51 @@
       "prototype": "multi-constraint",
       "intendedLiars": 3,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "C", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "D", "claims": [{"kind": "liar", "target": "A"}]},
-        {"name": "E", "claims": [{"kind": "count", "k": 3}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "E",
+          "claims": [
+            {
+              "kind": "count",
+              "k": 3
+            }
+          ]
+        }
       ]
     },
     {
@@ -322,11 +945,51 @@
       "prototype": "multi-constraint",
       "intendedLiars": 3,
       "people": [
-        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
-        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "C", "claims": [{"kind": "liar", "target": "A"}]},
-        {"name": "D", "claims": [{"kind": "honest", "target": "A"}]},
-        {"name": "E", "claims": [{"kind": "count", "k": 3}]}
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "E",
+          "claims": [
+            {
+              "kind": "count",
+              "k": 3
+            }
+          ]
+        }
       ]
     },
     {
@@ -335,11 +998,27 @@
       "level": 1,
       "prototype": "repeat-trade",
       "question": "total",
-      "open": {"cash": 4000, "hold": 1, "price": 600},
+      "open": {
+        "cash": 4000,
+        "hold": 1,
+        "price": 600
+      },
       "tx": [
-        {"op": "buy", "qty": 1, "price": 650},
-        {"op": "sell", "qty": 1, "price": 800},
-        {"op": "buy", "qty": 1, "price": 700}
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 650
+        },
+        {
+          "op": "sell",
+          "qty": 1,
+          "price": 800
+        },
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 700
+        }
       ],
       "closePrice": 750
     },
@@ -349,10 +1028,22 @@
       "level": 2,
       "prototype": "end-total",
       "question": "net",
-      "open": {"cash": 5000, "hold": 2, "price": 800},
+      "open": {
+        "cash": 5000,
+        "hold": 2,
+        "price": 800
+      },
       "tx": [
-        {"op": "sell", "qty": 1, "price": 900},
-        {"op": "buy", "qty": 2, "price": 850}
+        {
+          "op": "sell",
+          "qty": 1,
+          "price": 900
+        },
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 850
+        }
       ],
       "closePrice": 820
     },
@@ -362,10 +1053,22 @@
       "level": 3,
       "prototype": "buy-back",
       "question": "net",
-      "open": {"cash": 10000, "hold": 2, "price": 1200},
+      "open": {
+        "cash": 10000,
+        "hold": 2,
+        "price": 1200
+      },
       "tx": [
-        {"op": "sell", "qty": 1, "price": 1300},
-        {"op": "buy", "qty": 2, "price": 1150}
+        {
+          "op": "sell",
+          "qty": 1,
+          "price": 1300
+        },
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 1150
+        }
       ],
       "closePrice": 1180
     },
@@ -375,10 +1078,22 @@
       "level": 4,
       "prototype": "batch-buy",
       "question": "total",
-      "open": {"cash": 6000, "hold": 3, "price": 400},
+      "open": {
+        "cash": 6000,
+        "hold": 3,
+        "price": 400
+      },
       "tx": [
-        {"op": "buy", "qty": 2, "price": 450},
-        {"op": "sell", "qty": 4, "price": 600}
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 450
+        },
+        {
+          "op": "sell",
+          "qty": 4,
+          "price": 600
+        }
       ],
       "closePrice": 500
     },
@@ -388,13 +1103,535 @@
       "level": 5,
       "prototype": "mixed",
       "question": "total",
-      "open": {"cash": 15000, "hold": 1, "price": 2000},
+      "open": {
+        "cash": 15000,
+        "hold": 1,
+        "price": 2000
+      },
       "tx": [
-        {"op": "buy", "qty": 1, "price": 2100},
-        {"op": "swap", "give": 2, "take": 3, "cash": 400},
-        {"op": "sell", "qty": 2, "price": 2400}
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 2100
+        },
+        {
+          "op": "swap",
+          "give": 2,
+          "take": 3,
+          "cash": 400
+        },
+        {
+          "op": "sell",
+          "qty": 2,
+          "price": 2400
+        }
       ],
       "closePrice": 2300
+    },
+    {
+      "id": "L1-T1-004",
+      "type": "truth",
+      "level": 1,
+      "prototype": "cross-accuse",
+      "intendedLiars": 1,
+      "people": [
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            },
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L3-T1-004",
+      "type": "truth",
+      "level": 3,
+      "prototype": "multi-constraint",
+      "intendedLiars": 2,
+      "people": [
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "count",
+              "k": 1
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L3-T1-005",
+      "type": "truth",
+      "level": 3,
+      "prototype": "multi-constraint",
+      "intendedLiars": 3,
+      "people": [
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "count",
+              "k": 1
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "count",
+              "k": 1
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L4-T1-004",
+      "type": "truth",
+      "level": 4,
+      "prototype": "conditional",
+      "intendedLiars": 2,
+      "people": [
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "cond",
+              "if": {
+                "kind": "liar",
+                "target": "A"
+              },
+              "then": {
+                "kind": "honest",
+                "target": "B"
+              }
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L4-T1-005",
+      "type": "truth",
+      "level": 4,
+      "prototype": "conditional",
+      "intendedLiars": 1,
+      "people": [
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "cond",
+              "if": {
+                "kind": "liar",
+                "target": "A"
+              },
+              "then": {
+                "kind": "honest",
+                "target": "B"
+              }
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "cond",
+              "if": {
+                "kind": "liar",
+                "target": "A"
+              },
+              "then": {
+                "kind": "honest",
+                "target": "B"
+              }
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L5-T1-004",
+      "type": "truth",
+      "level": 5,
+      "prototype": "multi-constraint",
+      "intendedLiars": 3,
+      "people": [
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "count",
+              "k": 1
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "cond",
+              "if": {
+                "kind": "liar",
+                "target": "B"
+              },
+              "then": {
+                "kind": "honest",
+                "target": "C"
+              }
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "C"
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "E",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L5-T1-005",
+      "type": "truth",
+      "level": 5,
+      "prototype": "nested-statements",
+      "intendedLiars": 3,
+      "people": [
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "cond",
+              "if": {
+                "kind": "liar",
+                "target": "A"
+              },
+              "then": {
+                "kind": "honest",
+                "target": "B"
+              }
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "count",
+              "k": 1
+            }
+          ]
+        },
+        {
+          "name": "D",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "E",
+          "claims": [
+            {
+              "kind": "honest",
+              "target": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L1-T2-004",
+      "type": "ledger",
+      "level": 1,
+      "prototype": "repeat-trade",
+      "question": "total",
+      "open": {
+        "cash": 6000,
+        "hold": 0,
+        "price": 1000
+      },
+      "tx": [
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 1000
+        },
+        {
+          "op": "sell",
+          "qty": 1,
+          "price": 1300
+        }
+      ],
+      "closePrice": 1300
+    },
+    {
+      "id": "L2-T2-004",
+      "type": "ledger",
+      "level": 2,
+      "prototype": "end-total",
+      "question": "net",
+      "open": {
+        "cash": 8000,
+        "hold": 1,
+        "price": 1000
+      },
+      "tx": [
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 1100
+        },
+        {
+          "op": "sell",
+          "qty": 2,
+          "price": 1400
+        }
+      ],
+      "closePrice": 1250
+    },
+    {
+      "id": "L3-T2-004",
+      "type": "ledger",
+      "level": 3,
+      "prototype": "price-vs-hold",
+      "question": "total",
+      "open": {
+        "cash": 9000,
+        "hold": 3,
+        "price": 1200
+      },
+      "tx": [
+        {
+          "op": "swap",
+          "give": 2,
+          "take": 1,
+          "cash": 300
+        },
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 1500
+        }
+      ],
+      "closePrice": 1600
+    },
+    {
+      "id": "L4-T2-004",
+      "type": "ledger",
+      "level": 4,
+      "prototype": "batch-buy",
+      "question": "net",
+      "open": {
+        "cash": 12000,
+        "hold": 0,
+        "price": 1000
+      },
+      "tx": [
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 1000
+        },
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 1400
+        },
+        {
+          "op": "sell",
+          "qty": 1,
+          "price": 1600
+        }
+      ],
+      "closePrice": 1500
+    },
+    {
+      "id": "L5-T2-004",
+      "type": "ledger",
+      "level": 5,
+      "prototype": "mixed",
+      "question": "net",
+      "open": {
+        "cash": 15000,
+        "hold": 2,
+        "price": 1000
+      },
+      "tx": [
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 1200
+        },
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 1450
+        },
+        {
+          "op": "swap",
+          "give": 1,
+          "take": 2,
+          "cash": 500
+        },
+        {
+          "op": "sell",
+          "qty": 2,
+          "price": 1800
+        }
+      ],
+      "closePrice": 1700
     }
   ]
 }

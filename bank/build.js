@@ -41,7 +41,7 @@ function buildTruth(q) {
     if (c.kind === 'honest') return `${c.target} 说真话`;
     if (c.kind === 'liar') return `${c.target} 在撒谎`;
     if (c.kind === 'count') return `我们中恰好${cn(c.k)}人撒谎`;
-    return `如果${claimText(c.if)}，那么${claimText(c.then)}`;
+    return `如果 ${claimText(c.if)}，那么 ${claimText(c.then)}`;
   };
   const claimValue = (c, truth, liars) => {
     if (c.kind === 'honest') return truth[c.target];

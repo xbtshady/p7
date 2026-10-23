@@ -17,6 +17,7 @@ const SRC = path.join(__dirname, 'src.json');
 const BANK = path.join(__dirname, 'bank.json');
 const BLUEPRINT = path.join(__dirname, 'blueprint.json');
 const META_OUT = path.join(__dirname, 'meta.json');
+const PUBLISH = path.join(__dirname, 'bank.publish.json');
 const REPORT = path.join(__dirname, 'report.md');
 
 const CN = ['零', '一', '两', '三', '四', '五', '六', '七', '八', '九', '十'];
@@ -113,7 +114,7 @@ function renderClaim(c) {
     case 'count':
       return '我们中恰好' + cn(c.k) + '人撒谎';
     case 'cond':
-      return '如果' + renderClaim(c.if) + '，那么' + renderClaim(c.then);
+      return '如果 ' + renderClaim(c.if) + '，那么 ' + renderClaim(c.then);
     default:
       throw new Error('未知断言类型: ' + c.kind);
   }
@@ -173,6 +174,53 @@ function ledgerAnchor(q) {
   return { tx: q.tx.length, tracked, ops: ops.size, swapUsed: hasSwap };
 }
 
+/**
+ * 账面状态清单：这道题到底让哪些量发生了变化。
+ * 目的是把「难度」钉在状态种类上，而不是交易笔数上。
+ */
+function ledgerStatesTouched(q) {
+  const buys = q.tx.filter(t => t.op === 'buy');
+  const sells = q.tx.filter(t => t.op === 'sell');
+  const hasSwap = q.tx.some(t => t.op === 'swap');
+  const buyPrices = new Set(buys.map(t => t.price));
+  const states = new Set();
+  if (q.tx.length > 0) states.add('cash');
+  if (q.tx.some(t => t.op === 'buy' || t.op === 'sell' || t.op === 'swap')) states.add('hold');
+  if (hasSwap) states.add('swap');
+  // 分批成本：两笔以上不同价买入，且卖出后仍有剩余持仓
+  const lastStates = ledgerStates(q);
+  const holdEnd = lastStates[lastStates.length - 1].hold;
+  if (buys.length >= 2 && buyPrices.size >= 2 && sells.length > 0 && holdEnd > 0) states.add('batchCost');
+  // 期末估值差异：期末市价与末笔成交价不同，且期末仍有持仓
+  const lastTxPrice = q.tx.length ? (q.tx[q.tx.length - 1].price ?? q.closePrice) : q.open.price;
+  if (q.closePrice !== lastTxPrice && holdEnd > 0) states.add('closePriceDiff');
+  return states;
+}
+
+/** 按 blueprint 的 statePlan 校验难度递进 */
+function checkStatePlan(q, spec) {
+  const bad = [];
+  const plan = spec && spec.ledger && spec.ledger.statePlan;
+  if (!plan) return bad;
+  const touched = ledgerStatesTouched(q);
+
+  for (const s of plan.mustChange || []) {
+    if (!touched.has(s)) {
+      const why = {
+        cash: '现金没有变化',
+        hold: '持仓没有变化',
+        batchCost: '没有形成分批成本（需 ≥2 笔不同价买入、卖出后仍有持仓）',
+        closePriceDiff: '期末市价与末笔成交价相同，或期末已清仓，估值差异不存在'
+      }[s] || s;
+      bad.push(`账面状态「${s}」必须变化：${why}`);
+    }
+  }
+  for (const s of plan.mustNot || []) {
+    if (touched.has(s)) bad.push(`该级不应引入「${s}」`);
+  }
+  return bad;
+}
+
 /* ============ 难度锚 / 级别区间校验 ============ */
 
 function truthAnchor(q) {
@@ -223,6 +271,27 @@ function checkAnchor(q, anchor, spec) {
   return bad;
 }
 
+/**
+ * 机制校验：等级不是标签，必须由真实的推理机制支撑。
+ * 返回不通过的理由数组，空数组表示该级机制成立。
+ */
+function checkMechanism(q, anchor, spec, info) {
+  const bad = [];
+  const mech = spec.truth.mechanismEvidence || {};
+  const ev = info.evidence;
+
+  if (mech.requiresCondDecisive && (ev.condEliminates + ev.condDecisive) === 0) {
+    bad.push(`条件句没有参与推理（既没排除候选也没改变答案），该级要求蕴含式真值必须影响结论`);
+  }
+  if (mech.requiresCountDecisive && ev.countDecisive === 0) {
+    bad.push(`count 断言没有参与推理，该级要求用 count 与题面人数约束形成两个独立约束交叉筛选`);
+  }
+  if (mech.minGates && info.claims.gates.length < mech.minGates) {
+    bad.push(`闸门断言 ${info.claims.gates.length} 条，该级要求 ≥ ${mech.minGates}`);
+  }
+  return bad;
+}
+
 /* ============ 指纹 ============ */
 
 function fingerprint(q) {
@@ -246,11 +315,12 @@ function shortClaim(c) {
 
 /**
  * 逐条断言做消融实验，分三类：
- *   闸门 gate     — 去掉后「恰好 k 人撒谎」会同时命中多组，唯一性靠它
+ *   闸门 gate     — 去掉后「恰好 k 人撒谎」命中多组，或命中 1 组但答案变了。唯一性靠它
  *   必要 essential — 去掉后无解，这句不能少
- *   冗余 droppable — 去掉后答案不变，这句是废话，玩家白读
+ *   可删 droppable — 去掉后答案不变，这句是无效信息，玩家白读
  *
- * 可删断言是题面质量信号：有它没它一个样，说明这题偏松，或者题面可以更短。
+ * 注意 droppable 与 gates 是互斥的：早先版本把「命中 1 组但解集发生变化」无差别塞进 gates，
+ * 导致一条断言同时算闸门又算可删，统计口径自相矛盾。
  */
 function analyzeClaims(people, k) {
   const base = solveAll(people);
@@ -269,12 +339,20 @@ function analyzeClaims(people, k) {
     }));
     const hits = solveAll(reduced).filter(s => s.liars === k);
     const label = `${f.name} 说的「${renderClaim(f.claim)}」`;
-    if (hits.length === 0) essential.push(label);
-    else if (hits.length === 1 && baseAns && keyOf(hits[0]) === baseAns) droppable.push(label);
-    else if (hits.length > 1) gates.push({ label, hits: hits.length });
-    else gates.push({ label, hits: hits.length });   // 命中 1 组但答案变了：也是关键
+    if (hits.length === 0) {
+      essential.push(label);
+    } else if (hits.length === 1 && baseAns && keyOf(hits[0]) === baseAns) {
+      droppable.push(label);
+    } else {
+      gates.push({ label, hits: hits.length, answerChanged: hits.length === 1 });
+    }
   }
-  return { gates, droppable, essential, baseAns };
+  return {
+    total: flat.length,
+    gates, droppable, essential, baseAns,
+    /** 所有断言去掉后答案都不变 —— 题面信息全无效，不是正式题 */
+    allDroppable: flat.length > 0 && droppable.length === flat.length
+  };
 }
 
 /** 兼容旧调用：取第一道闸门 */
@@ -291,6 +369,57 @@ function findCriticalClaim(people, k) {
     critical: g.label,
     hit: `去掉它，"恰好${cn(k)}人撒谎"会同时命中 ${g.hits} 组候选，必须靠这句二选一`
   };
+}
+
+/**
+ * 机制证据：不是「有没有这个类型的断言」，而是「这个断言有没有真的参与推理」。
+ *
+ * 这是区分等级的关键。一道 5 人的题里塞一句 cond，如果去掉它对答案毫无影响，
+ * 那它只是装饰，不能算 L4。同理 L3 的 count 如果和题面约束重复，也不算交叉筛选。
+ */
+function mechanismEvidence(people, k) {
+  const names = people.map(p => p.name);
+  const keyOf = s => names.map(n => n + (s.truth[n] ? 'T' : 'F')).join('');
+  const baseHits = solveAll(people).filter(s => s.liars === k);
+  const baseAns = baseHits.length === 1 ? keyOf(baseHits[0]) : null;
+  const ev = { condEliminates: 0, condDecisive: 0, countDecisive: 0, countTautology: 0, condAsIfThen: 0 };
+
+  const flat = [];
+  people.forEach(p => p.claims.forEach(c => flat.push({ name: p.name, claim: c })));
+
+  for (const f of flat) {
+    // --- 条件句：必须真的排除候选，或真的改变答案 ---
+    if (f.claim.kind === 'cond') {
+      // 前件真值依赖别的断言，而不是常量
+      const dep = new Set();
+      const collect = c => {
+        if (c.kind === 'honest' || c.kind === 'liar') dep.add(c.target);
+        else if (c.kind === 'cond') { collect(c.if); collect(c.then); }
+      };
+      collect(f.claim.if);
+      if (dep.size > 0) ev.condAsIfThen += 1;
+
+      const reduced = people.map(p => ({
+        ...p, claims: p.claims.filter(c => c !== f.claim)
+      }));
+      const after = solveAll(reduced).filter(s => s.liars === k);
+      if (after.length > 1) ev.condEliminates += 1;
+      else if (after.length === 1 && keyOf(after[0]) !== baseAns) ev.condDecisive += 1;
+    }
+
+    // --- count 断言：如果它的 k 恰好等于题面约束 k，它对收敛毫无贡献 ---
+    if (f.claim.kind === 'count') {
+      if (f.claim.k === k) ev.countTautology += 1;
+      else {
+        const reduced = people.map(p => ({
+          ...p, claims: p.claims.filter(c => c !== f.claim)
+        }));
+        const after = solveAll(reduced).filter(s => s.liars === k);
+        if (after.length > 1 || (after.length === 1 && keyOf(after[0]) !== baseAns)) ev.countDecisive += 1;
+      }
+    }
+  }
+  return ev;
 }
 
 /**
@@ -359,21 +488,37 @@ function checkTruth(q, bp) {
   const spec = bp.levels.find(l => l.level === q.level);
   if (spec) {
     const bad = checkAnchor(q, anchor, spec.truth);
-    if (bad.length) warns.push(...bad.map(b => '难度锚: ' + b));
+    if (bad.length) errors.push(...bad.map(b => '难度锚: ' + b));
   } else {
     errors.push('蓝图中无此级别');
   }
 
   const claimAnalysis = analyzeClaims(q.people, q.intendedLiars);
   info.claims = claimAnalysis;
+  info.evidence = mechanismEvidence(q.people, q.intendedLiars);
   info.critical = claimAnalysis.gates.length
     ? { critical: claimAnalysis.gates[0].label, hit: claimAnalysis.gates[0].hits }
     : { critical: null, hit: '无单点闸门' };
-  if (claimAnalysis.droppable.length) {
-    warns.push(`可删断言 ${claimAnalysis.droppable.length} 条（去掉后答案不变）：${claimAnalysis.droppable.join('、')}`);
+
+  // 可删断言：动态上限 = 断言总数 − 1 − 该级 slack
+  // 注意基数必须是 claimAnalysis.total（每条断言算一个），不能用 anchor.assertCount
+  // （后者是「每人陈述条目数」，一人说两句只算 1 条）
+  // 有效断言下限：闸门 + 必要 才是「真的影响答案」的断言。
+  // 只限可删数没有意义——5 条断言里 2 条可删、3 条有效，明显优于 4 条里 2 条可删。
+  const minEffective = Math.max(1, (spec && spec.truth && spec.truth.minEffective) || 1);
+  const effective = claimAnalysis.gates.length + claimAnalysis.essential.length;
+  if (claimAnalysis.allDroppable) {
+    errors.push(`全部 ${claimAnalysis.total} 条断言去掉后答案都不变，题面不提供任何有效信息`);
+  } else if (effective < minEffective) {
+    errors.push(`有效断言只有 ${effective} 条（闸门 ${claimAnalysis.gates.length} + 必要 ${claimAnalysis.essential.length}），该级要求 ≥ ${minEffective}；可删 ${claimAnalysis.droppable.length} 条：${claimAnalysis.droppable.join('、')}`);
   }
   if (!claimAnalysis.gates.length) {
-    warns.push('无单点闸门：唯一性只由人数约束提供，结构偏平');
+    errors.push('无闸门断言：唯一性只由题面的人数约束提供，题面陈述不影响解题');
+  }
+
+  if (spec) {
+    const mech = checkMechanism(q, anchor, spec, info);
+    if (mech.length) errors.push(...mech);
   }
 
   return { errors, warns, info };
@@ -411,9 +556,20 @@ function checkLedger(q, bp) {
   const spec = bp.levels.find(l => l.level === q.level);
   if (spec) {
     const bad = checkAnchor(q, anchor, spec.ledger);
-    if (bad.length) warns.push(...bad.map(b => '难度锚: ' + b));
+    if (bad.length) errors.push(...bad.map(b => '难度锚: ' + b));
+    const planBad = checkStatePlan(q, spec);
+    if (planBad.length) errors.push(...planBad.map(b => '难度递进: ' + b));
   } else {
     errors.push('蓝图中无此级别');
+  }
+
+  // net 的定义必须唯一：期末总资产 − 期初总资产，不是已实现交易利润
+  const realized = states[states.length - 1].cash - q.open.cash;
+  info.realizedProfit = realized;
+  if (q.question === 'net' && info.anchor && closed.holdEnd === 0 && Math.abs(realized - closed.net) < 1e-9) {
+    // 持仓归零时两者必然相等，无法区分口径，要求题面能体现差异
+    // 不是错误，但要在报告里点出来：这类题玩家即便用错口径也能对
+    warns.push('期末已清仓，net 与已实现利润数值相同，无法区分口径（建议保留部分持仓）');
   }
 
   info.traps = ledgerTraps(q);
@@ -452,6 +608,7 @@ function crossCheck(q, built, info) {
     if (built.prompt.constraint !== expectConstraint) {
       errs.push(`约束文案不符：应为「${expectConstraint}」，实为「${built.prompt.constraint}」`);
     }
+    errs.push(...crossCheckTruthSolution(q, built, info));
   } else {
     if (built.answer.value !== info.closed.value) {
       errs.push(`答案不符：应为 ${info.closed.value}，bank.json 记为 ${built.answer.value}`);
@@ -477,7 +634,153 @@ function crossCheck(q, built, info) {
       });
     }
     if (built.prompt.question !== q.question) errs.push('question 与源数据不符');
+    errs.push(...crossCheckLedgerSolution(q, built, info));
   }
+  return errs;
+}
+
+/**
+ * 解析交叉核对（真假话）
+ *
+ * 解析是最容易出错的地方：答案对了，解析里写「B 是诚实者」却可能写反。
+ * 这里不复用 build 的任何中间量，全部从 solveAll 独立重算：
+ *   1. summary 里的真假串必须与独立解一致
+ *   2. 自洽解组数必须与独立枚举一致
+ *   3. 每条陈述的真值判定必须与独立求值一致
+ *   4. 「对得上 / 对不上」的结论必须与「陈述真值 == 身份」一致
+ */
+function crossCheckTruthSolution(q, built, info) {
+  const errs = [];
+  const sol = info.answer;
+  if (!sol) return ['无唯一解，跳过解析核对'];
+  const names = q.people.map(p => p.name);
+  const sols = solveAll(q.people);
+  const linked = built.solution || {};
+  const text = (linked.lines || []).join('\n') + '\n' + (linked.summary || '');
+
+  // 1. summary 的真假串
+  const expectSummary = names.map(n => n + ' ' + (sol.truth[n] ? '真' : '假')).join('、') + `，撒谎 ${q.intendedLiars} 人`;
+  if ((linked.summary || '') !== expectSummary) {
+    errs.push(`解析 summary 不符：应为「${expectSummary}」，实为「${linked.summary || '(空)'}」`);
+  }
+
+  // 2. 自洽解组数
+  const mCount = text.match(/一共 (\d+) 组/);
+  if (!mCount) errs.push('解析中找不到自洽解组数');
+  else if (Number(mCount[1]) !== sols.length) {
+    errs.push(`解析称自洽解 ${mCount[1]} 组，独立枚举为 ${sols.length} 组`);
+  }
+
+  // 3+4. 每条陈述的真值判定与对得上/对不上的结论
+  // 解析中的引号是中文双引号（"），不是直角引号，按双引号定位
+  // 判定行必须以「X 是」开头才算该人的行，否则可能撞到别人说同一句话的行
+  const used = new Set();
+  for (const p of q.people) {
+    const isHonest = sol.truth[p.name];
+    for (const c of p.claims) {
+      const ctext = renderClaim(c);
+      const v = val(c, sol.truth, sol.liars);
+      const prefix = `${p.name} 是`;
+      const tail = `他说的"${ctext}"确实是${v ? '真' : '假'}话——${isHonest ? '真话者的陈述为真' : '撒谎者的陈述为假'}，${v === isHonest ? '对得上' : '对不上'}。`;
+      const idx = (linked.lines || []).findIndex((l, i) =>
+        !used.has(i) && l.startsWith(prefix) && (l.includes(`"${ctext}"`) || l.includes(`「${ctext}」`)));
+      if (idx < 0) {
+        errs.push(`解析缺少对「${p.name}：${ctext}」的判定`);
+        continue;
+      }
+      used.add(idx);
+      const line = linked.lines[idx];
+      if (!line.endsWith(tail)) {
+        errs.push(`「${p.name}：${ctext}」解析判定与独立求值不符：应为「…${tail}」，实为「${line}」`);
+      }
+    }
+  }
+
+  // 5. 解析里出现的人名必须都在题面里
+  const others = new Set();
+  for (const l of linked.lines || []) {
+    for (const m of l.matchAll(/([A-Za-z]{1,2}) 是/g)) {
+      if (!names.includes(m[1])) others.add(m[1]);
+    }
+  }
+  if (others.size) errs.push(`解析提到不属于本题的人：${[...others].join('、')}`);
+
+  return errs;
+}
+
+/**
+ * 解析交叉核对（账本）
+ *
+ * 中间状态是账本最容易错的部分：结论对了，但账本某一行写错。
+ * 独立重算每一步的 cash / hold，与 bank.json 的 solution.ledger 逐行比对。
+ */
+function crossCheckLedgerSolution(q, built, info) {
+  const errs = [];
+  const closed = info.closed;
+  const states = ledgerStates(q);
+  const linked = built.solution || {};
+  const ledger = linked.ledger || [];
+  const lines = linked.lines || [];
+
+  // 1. 账本行数 = 期初 + 每笔 + 期末
+  const expectRows = q.tx.length + 2;
+  if (ledger.length !== expectRows) {
+    errs.push(`解析账本行数不符：应为 ${expectRows} 行，实为 ${ledger.length} 行`);
+  } else {
+    // 期初
+    if (ledger[0].cash !== states[0].cash || ledger[0].hold !== states[0].hold) {
+      errs.push(`解析期初状态不符：应为 现金 ${states[0].cash} / 持货 ${states[0].hold}，实为 现金 ${ledger[0].cash} / 持货 ${ledger[0].hold}`);
+    }
+    // 每笔
+    for (let i = 0; i < q.tx.length; i++) {
+      const row = ledger[i + 1];
+      const s = states[i + 1];
+      if (row.cash !== s.cash || row.hold !== s.hold) {
+        errs.push(`解析第 ${i + 1} 笔后状态不符：应为 现金 ${s.cash} / 持货 ${s.hold}，实为 现金 ${row.cash} / 持货 ${row.hold}`);
+      }
+      // 行内数字必须自洽：现金变化 = 这一步的金额影响
+      const t = q.tx[i];
+      const dc = row.cash - ledger[i].cash;
+      const dh = row.hold - ledger[i].hold;
+      const expDc = t.op === 'buy' ? -(t.qty * t.price) : t.op === 'sell' ? t.qty * t.price : -t.cash;
+      const expDh = t.op === 'buy' ? t.qty : t.op === 'sell' ? -t.qty : t.take - t.give;
+      if (dc !== expDc) errs.push(`解析第 ${i + 1} 笔现金变动不符：应为 ${expDc}，实为 ${dc}`);
+      if (dh !== expDh) errs.push(`解析第 ${i + 1} 笔持货变动不符：应为 ${expDh}，实为 ${dh}`);
+    }
+    // 期末
+    const last = ledger[ledger.length - 1];
+    if (last.cash !== closed.cashEnd || last.hold !== closed.holdEnd) {
+      errs.push(`解析期末状态不符：应为 现金 ${closed.cashEnd} / 持货 ${closed.holdEnd}，实为 现金 ${last.cash} / 持货 ${last.hold}`);
+    }
+  }
+
+  // 2. lines 中的四个关键数字
+  const expectLines = [
+    `期初总资产 ${closed.totalOpen}（${q.open.cash} + ${q.open.hold}×${q.open.price}）`,
+    `期末现金 ${closed.cashEnd}，持货 ${closed.holdEnd} 件`,
+    `期末总资产 ${closed.totalEnd}（${closed.cashEnd} + ${closed.holdEnd}×${q.closePrice}）`,
+    `净盈亏 ${closed.net >= 0 ? '+' : ''}${closed.net}`
+  ];
+  expectLines.forEach((el, i) => {
+    if ((lines[i] || '') !== el) {
+      errs.push(`解析第 ${i + 1} 条结论不符：应为「${el}」，实为「${lines[i] || '(空)'}」`);
+    }
+  });
+
+  // 3. summary 必须与所问指标一致
+  const expectSummary = q.question === 'total'
+    ? `期末总资产 ${closed.totalEnd} 元`
+    : `净盈亏 ${closed.net >= 0 ? '+' : ''}${closed.net} 元`;
+  if ((linked.summary || '') !== expectSummary) {
+    errs.push(`解析 summary 不符：应为「${expectSummary}」，实为「${linked.summary || '(空)'}」`);
+  }
+
+  // 4. 所问指标必须真的是 answer 指向的那个量
+  const answerIsTotal = Math.abs(built.answer.value - closed.totalEnd) < 1e-9;
+  const answerIsNet = Math.abs(built.answer.value - closed.net) < 1e-9;
+  if (q.question === 'total' && !answerIsTotal) errs.push('答案既不是期末总资产也不是所问指标');
+  if (q.question === 'net' && !answerIsNet && !answerIsTotal) errs.push('答案与 net / total 都不符');
+
   return errs;
 }
 
@@ -561,13 +864,15 @@ md.push('## 结构强度（仅真假话）');
 md.push('');
 md.push('对每条断言做消融实验：单独去掉它，看答案还在不在。');
 md.push('');
-md.push('- **闸门断言**：去掉后「恰好 k 人撒谎」会同时命中多组，唯一性靠它 —— 这才是玩家必须验到的那一步');
+md.push('- **闸门断言**：去掉后候选裂开或答案改变 —— 这才是玩家必须验到的那一步');
 md.push('- **必要断言**：去掉后无解，这句不能少');
 md.push('- **可删断言**：去掉后答案不变，玩家读它不产生任何推理收益');
 md.push('');
+md.push('三类互斥，合计等于断言总数。可删断言超过该级上限即判不通过。');
+md.push('');
 md.push(`- 有闸门断言的题：${withGate.length} / ${truthRows.length}`);
 md.push(`- 含可删断言的题：${withDroppable.length} / ${truthRows.length}`);
-md.push(`- 断言全部可删的题：${truthRows.filter(r => r.info.claims.droppable.length === r.info.claims.droppable.length + r.info.claims.essential.length).length} / ${truthRows.length}`);
+md.push(`- 断言全部可删的题：${truthRows.filter(r => r.info.claims.allDroppable).length} / ${truthRows.length}`);
 md.push('');
 if (withDroppable.length) {
   md.push('| 题号 | 断言数 | 闸门 | 必要 | 可删 | 可删的是哪几句 |');
@@ -604,13 +909,46 @@ if (failed.length) {
 if (warned.length) {
   md.push('## 警告明细');
   md.push('');
-  md.push('难度锚与蓝图不符。这些题能入库，但级别标定可疑，需要要么改题、要么改蓝图区间。');
+  md.push('不影响入库，但提示题目设计上还有余地。');
   md.push('');
   for (const r of warned) {
     md.push(`- ${r.q.id}：${r.warns.join('；')}`);
   }
   md.push('');
 }
+
+/* ---- 发布门禁：生成 bank.publish.json ---- */
+
+/**
+ * 正式发布文件只包含通过全部检查的题。
+ * bank.json 是构建产物，可能含坏题；bank.publish.json 是唯一可信的发布源。
+ * app 侧应读 bank.publish.json。
+ */
+const publishIds = new Set(rows.filter(r => r.errors.length === 0).map(r => r.q.id));
+let publish = null;
+if (bank) {
+  publish = {
+    schemaVersion: bank.schemaVersion,
+    bankVersion: bank.bankVersion,
+    publishVersion: (bank.bankVersion || 0) * 1000 + publishIds.size,
+    questions: bank.questions.filter(q => publishIds.has(q.id))
+  };
+  fs.writeFileSync(PUBLISH, JSON.stringify(publish, null, 2) + '\n', 'utf8');
+}
+
+md.push('## 发布门禁');
+md.push('');
+if (publish) {
+  md.push(`- \`bank.json\`（构建产物）：${bank.questions.length} 题`);
+  md.push(`- \`bank.publish.json\`（发布源，只含通过项）：**${publish.questions.length} 题**`);
+  const excluded = bank.questions.filter(q => !publishIds.has(q.id)).map(q => q.id);
+  if (excluded.length) {
+    md.push(`- 已拦截：${excluded.join('、')}`);
+  }
+} else {
+  md.push('- bank.json 不存在，未生成发布文件');
+}
+md.push('');
 
 /* ---- meta.json ---- */
 
@@ -662,4 +1000,8 @@ if (warned.length) {
   warned.forEach(r => console.log(`  ${r.q.id}: ${r.warns.join(' / ')}`));
 }
 console.log(`\n报告已写出：${path.relative(process.cwd(), REPORT)}`);
+if (publish) {
+  const excluded = (bank ? bank.questions.length : 0) - publish.questions.length;
+  console.log(`发布文件：bank.publish.json（${publish.questions.length} 题${excluded ? `，拦截 ${excluded} 题` : ''}）`);
+}
 if (failed.length) process.exit(1);
