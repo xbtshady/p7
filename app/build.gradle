@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.application' version '8.7.3'
+}
+
+android {
+    namespace 'com.xbtshady.p7'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.xbtshady.p7'
+        minSdk 29
+        targetSdk 36
+        versionCode 1
+        versionName '1.0'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // 题库是纯 JSON 数据文件，不做压缩，保持可读（便于排查"app 读到的和仓库里的是否一致"）
+    androidResources {
+        noCompress 'json'
+    }
+}
+
+dependencies {
+    // 架构文档 §1：仅此一个依赖
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+
+    // appcompat 会带进 kotlin-stdlib-jdk7/jdk8 1.6.21，与 kotlin-stdlib 1.8.22 撞类
+    // （checkDebugDuplicateClasses 报 Duplicate class）。对齐到同一版本即可。
+    constraints {
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22')
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22')
+    }
+}

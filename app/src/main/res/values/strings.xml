@@ -1,0 +1,51 @@
+<resources>
+    <string name="app_name">p7</string>
+
+    <!-- 前端设计文档 §6 文案表 -->
+    <string name="submit">提交</string>
+    <string name="correct">对</string>
+    <string name="wrong">错</string>
+    <string name="not_done">未做</string>
+    <string name="answer_title">答案</string>
+    <string name="next">下一题</string>
+    <string name="redo">重做本题</string>
+
+    <string name="stuck_title">这题卡在哪？</string>
+    <string name="stuck_hold">保持太多</string>
+    <string name="stuck_hold_note">同时要记的东西太多</string>
+    <string name="stuck_update">更新跟不上</string>
+    <string name="stuck_update_note">推到后面忘了前面</string>
+    <string name="stuck_convert">框架没转</string>
+    <string name="stuck_convert_note">条件没转成计数</string>
+
+    <string name="list_hint">点题可重做，记录只增不覆盖</string>
+    <string name="random">随机一题</string>
+    <string name="first_step_hint">用一句话说出你的第一步</string>
+    <string name="first_step_start">开始</string>
+    <string name="prompt_collapsed">题面已收起</string>
+    <string name="start_answering">开始作答</string>
+
+    <string name="q_net">净盈亏是多少？</string>
+    <string name="q_total">期末总资产是多少？</string>
+
+    <string name="type_truth">真假话</string>
+    <string name="type_ledger">账本</string>
+
+    <string name="settings">设置</string>
+    <string name="aux_tier">辅助档</string>
+    <string name="aux_loose">宽松</string>
+    <string name="aux_standard">标准</string>
+    <string name="aux_challenge">挑战</string>
+    <string name="version_info">数据 v1 · 题库 %1$d</string>
+
+    <string name="unit_yuan">元</string>
+    <string name="liars_count">撒谎人数</string>
+    <string name="choice_true">真</string>
+    <string name="choice_false">假</string>
+
+    <string name="level_prefix">L</string>
+    <string name="empty_level">本级暂无题目</string>
+    <string name="bank_error">题库异常</string>
+    <string name="bank_mismatch">题库与 app 版本不匹配</string>
+    <string name="exit">退出</string>
+</resources>

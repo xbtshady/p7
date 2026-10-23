@@ -1,0 +1,19 @@
+pluginManagement {
+    repositories {
+        // 阿里云放最前：Kotlin 构件走 google()/mavenCentral() 会被 301 到 github，国内网络会卡死（架构文档 §10）
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugins' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        google()
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'p7'

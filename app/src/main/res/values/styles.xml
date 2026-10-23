@@ -1,0 +1,26 @@
+<resources>
+    <!-- 前端设计文档 §7：浅色固定，不跟随系统深色。用 Light 主题且不引 DayNight -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">@color/background</item>
+    </style>
+
+    <!-- 前端设计文档 §7：按钮高 48dp、圆角 8dp -->
+    <style name="Button" parent="Widget.AppCompat.Button">
+        <item name="android:minHeight">@dimen/button_h</item>
+        <item name="android:textSize">@dimen/text_body</item>
+        <item name="android:background">@drawable/bg_button</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- 次要按钮：描边 + 正文色，用于重做、开始作答 -->
+    <style name="Button.Secondary" parent="Widget.AppCompat.Button">
+        <item name="android:minHeight">@dimen/button_h</item>
+        <item name="android:textSize">@dimen/text_body</item>
+        <item name="android:background">@drawable/bg_button_secondary</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+</resources>

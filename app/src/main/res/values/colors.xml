@@ -1,0 +1,10 @@
+<resources>
+    <!-- 前端设计文档 §7：浅色固定，不跟随系统深色 -->
+    <color name="text_primary">#1A1A1A</color>
+    <color name="text_secondary">#6B6B6B</color>
+    <color name="divider">#E3E3E3</color>
+    <color name="accent">#2F6FEB</color>
+    <color name="correct">#1E8E3E</color>
+    <color name="wrong">#C0392B</color>
+    <color name="background">#FFFFFF</color>
+</resources>
