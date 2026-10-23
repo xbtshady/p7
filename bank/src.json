@@ -1,5 +1,5 @@
 {
-  "bankVersion": 1,
+  "bankVersion": 2,
   "questions": [
     {
       "id": "L1-T1-001",
@@ -274,6 +274,127 @@
         {"op": "sell", "qty": 3, "price": 700}
       ],
       "closePrice": 650
+    },
+    {
+      "id": "L3-T1-003",
+      "type": "truth",
+      "level": 3,
+      "prototype": "multi-constraint",
+      "intendedLiars": 2,
+      "people": [
+        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
+        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
+        {"name": "C", "claims": [{"kind": "liar", "target": "A"}]},
+        {"name": "D", "claims": [{"kind": "count", "k": 2}]}
+      ]
+    },
+    {
+      "id": "L4-T1-003",
+      "type": "truth",
+      "level": 4,
+      "prototype": "conditional",
+      "intendedLiars": 1,
+      "people": [
+        {"name": "A", "claims": [{"kind": "cond", "if": {"kind": "honest", "target": "B"}, "then": {"kind": "liar", "target": "C"}}]},
+        {"name": "B", "claims": [{"kind": "liar", "target": "A"}]},
+        {"name": "C", "claims": [{"kind": "liar", "target": "A"}]},
+        {"name": "D", "claims": [{"kind": "liar", "target": "A"}]}
+      ]
+    },
+    {
+      "id": "L5-T1-002",
+      "type": "truth",
+      "level": 5,
+      "prototype": "multi-constraint",
+      "intendedLiars": 3,
+      "people": [
+        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
+        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
+        {"name": "C", "claims": [{"kind": "honest", "target": "A"}]},
+        {"name": "D", "claims": [{"kind": "liar", "target": "A"}]},
+        {"name": "E", "claims": [{"kind": "count", "k": 3}]}
+      ]
+    },
+    {
+      "id": "L5-T1-003",
+      "type": "truth",
+      "level": 5,
+      "prototype": "multi-constraint",
+      "intendedLiars": 3,
+      "people": [
+        {"name": "A", "claims": [{"kind": "honest", "target": "B"}]},
+        {"name": "B", "claims": [{"kind": "honest", "target": "A"}]},
+        {"name": "C", "claims": [{"kind": "liar", "target": "A"}]},
+        {"name": "D", "claims": [{"kind": "honest", "target": "A"}]},
+        {"name": "E", "claims": [{"kind": "count", "k": 3}]}
+      ]
+    },
+    {
+      "id": "L1-T2-003",
+      "type": "ledger",
+      "level": 1,
+      "prototype": "repeat-trade",
+      "question": "total",
+      "open": {"cash": 4000, "hold": 1, "price": 600},
+      "tx": [
+        {"op": "buy", "qty": 1, "price": 650},
+        {"op": "sell", "qty": 1, "price": 800},
+        {"op": "buy", "qty": 1, "price": 700}
+      ],
+      "closePrice": 750
+    },
+    {
+      "id": "L2-T2-003",
+      "type": "ledger",
+      "level": 2,
+      "prototype": "end-total",
+      "question": "net",
+      "open": {"cash": 5000, "hold": 2, "price": 800},
+      "tx": [
+        {"op": "sell", "qty": 1, "price": 900},
+        {"op": "buy", "qty": 2, "price": 850}
+      ],
+      "closePrice": 820
+    },
+    {
+      "id": "L3-T2-003",
+      "type": "ledger",
+      "level": 3,
+      "prototype": "buy-back",
+      "question": "net",
+      "open": {"cash": 10000, "hold": 2, "price": 1200},
+      "tx": [
+        {"op": "sell", "qty": 1, "price": 1300},
+        {"op": "buy", "qty": 2, "price": 1150}
+      ],
+      "closePrice": 1180
+    },
+    {
+      "id": "L4-T2-003",
+      "type": "ledger",
+      "level": 4,
+      "prototype": "batch-buy",
+      "question": "total",
+      "open": {"cash": 6000, "hold": 3, "price": 400},
+      "tx": [
+        {"op": "buy", "qty": 2, "price": 450},
+        {"op": "sell", "qty": 4, "price": 600}
+      ],
+      "closePrice": 500
+    },
+    {
+      "id": "L5-T2-003",
+      "type": "ledger",
+      "level": 5,
+      "prototype": "mixed",
+      "question": "total",
+      "open": {"cash": 15000, "hold": 1, "price": 2000},
+      "tx": [
+        {"op": "buy", "qty": 1, "price": 2100},
+        {"op": "swap", "give": 2, "take": 3, "cash": 400},
+        {"op": "sell", "qty": 2, "price": 2400}
+      ],
+      "closePrice": 2300
     }
   ]
 }

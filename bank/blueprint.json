@@ -1,0 +1,188 @@
+{
+  "blueprintVersion": 1,
+  "note": "机器可读的题目规格。gen.js 按此生成候选，verify.js 按此校验。改这里等于改题库的验收标准。targetPerLevel 为每级总题量（真假话 + 账本）。",
+  "targetPerLevel": 12,
+  "anchorDoc": {
+    "truth": {
+      "n": "人数",
+      "condDepth": "条件句最大嵌套深度，0 表示无 cond",
+      "assertCount": "断言总条数",
+      "survivors": "自洽解组数，必须 >= minSurvivors，否则不用排除就能蒙对",
+      "k": "题面约束的撒谎人数，必须只命中 1 组自洽解",
+      "countUsed": "是否使用 count 断言"
+    },
+    "ledger": {
+      "tx": "交易笔数",
+      "tracked": "需要同时维持的中间量个数：cash 恒计 1；存在 sell/swap 时 hold 计 1；>=2 笔 buy 时均价计 1；closePrice 与末笔成交价不等时市值差计 1",
+      "ops": "用到的交易类型种类数",
+      "swapUsed": "是否使用置换"
+    }
+  },
+  "levels": [
+    {
+      "level": 1,
+      "name": "基础心智模拟",
+      "truth": {
+        "trainGoal": "把「谁是诚实者」当成一个待定变量，代入每句话自检。建立「陈述真假 = 说话人身份」这个映射。",
+        "mechanism": "逐个假设某人的身份，检查其陈述是否与假设自洽；不自洽立即弃掉。",
+        "cognitiveLoad": "3 个变量同时成立，且每句断言都跨指他人，无法单点判定。",
+        "expectedSteps": "4–8 步（假设 + 代回 + 排除）",
+        "prototypes": ["three-with-count", "cycle-accuse", "exactly-one-true"],
+        "allowedKinds": ["honest", "liar", "count"],
+        "anchor": { "n": [3, 3], "condDepth": [0, 0], "assertCount": [3, 5], "minSurvivors": 2, "k": [1, 2] },
+        "mustUse": [],
+        "typicalErrors": [
+          "只看第一句就下结论，忘了后面的约束会推翻它",
+          "把「B 在撒谎」当成「B 说假话」以外的东西（如 B 是坏人身份）"
+        ]
+      },
+      "ledger": {
+        "trainGoal": "维持现金和持仓两个量，买卖各一笔后仍能说清现在手里有什么。",
+        "mechanism": "每笔交易同时改两个变量，且方向相反（买：现金减、持仓增）。",
+        "cognitiveLoad": "两个量必须并行更新，只跟住一个就会漏另一个。",
+        "expectedSteps": "3–5 步（期初 + 两笔 + 期末估值）",
+        "prototypes": ["repeat-trade", "end-total"],
+        "allowedKinds": [],
+        "anchor": { "tx": [2, 2], "tracked": [2, 3], "ops": [2, 2], "swapUsed": false },
+        "mustUse": [],
+        "typicalErrors": [
+          "只算现金，忘了持仓也有市值",
+          "把卖出的收入直接当成盈利"
+        ]
+      }
+    },
+    {
+      "level": 2,
+      "name": "多约束同步",
+      "truth": {
+        "trainGoal": "在 4 个变量下维持约束，且要学会用「人数约束」一次性筛掉一批候选。",
+        "mechanism": "先按人数约束砍掉不可能组合，再逐组代回验证；顺序反了会白算很多组。",
+        "cognitiveLoad": "4 个变量 + 一个全局计数约束，局部自洽不再等于全局自洽。",
+        "expectedSteps": "8–14 步",
+        "prototypes": ["who-is-criminal", "knights-knaves", "cycle-accuse"],
+        "allowedKinds": ["honest", "liar", "count"],
+        "anchor": { "n": [4, 4], "condDepth": [0, 0], "assertCount": [4, 5], "minSurvivors": 2, "k": [1, 3] },
+        "mustUse": [],
+        "typicalErrors": [
+          "把「恰好 k 人撒谎」当成「至少 k 人」",
+          "找到一组自洽就停手，没检查是否唯一"
+        ]
+      },
+      "ledger": {
+        "trainGoal": "3 笔交易、含一次方向反转，始终分清「现金流」和「盈亏」。",
+        "mechanism": "交易序列中途改变持仓方向，需要重新定义「成本」。",
+        "cognitiveLoad": "持仓从有到无或从无到有，中间的估值基准必须跟着切。",
+        "expectedSteps": "5–8 步",
+        "prototypes": ["end-total", "repeat-trade"],
+        "allowedKinds": [],
+        "anchor": { "tx": [2, 3], "tracked": [3, 3], "ops": [2, 2], "swapUsed": false },
+        "mustUse": [],
+        "typicalErrors": [
+          "卖出后再买入时，把上一轮的成本带过来",
+          "期末资产漏算持仓市值"
+        ]
+      }
+    },
+    {
+      "level": 3,
+      "name": "多重约束排除",
+      "truth": {
+        "trainGoal": "用两个以上独立约束交叉排除，而不是只靠人数约束。",
+        "mechanism": "count 断言引入第二重约束，两个约束交集才收敛到唯一解。",
+        "cognitiveLoad": "候选世界数量大，但可用信息分散在多个断言里，必须都读完才能排除。",
+        "expectedSteps": "10–18 步",
+        "prototypes": ["multi-constraint", "knights-knaves", "who-is-criminal"],
+        "allowedKinds": ["honest", "liar", "count"],
+        "anchor": { "n": [4, 4], "condDepth": [0, 0], "assertCount": [4, 6], "minSurvivors": 2, "k": [1, 3] },
+        "mustUse": ["count"],
+        "typicalErrors": [
+          "只用一个约束排除，剩下两个候选无法区分",
+          "count 断言的计数范围理解错（是全体还是除自己之外）"
+        ]
+      },
+      "ledger": {
+        "trainGoal": "引入置换操作，训练「统一计量口径」的能力。",
+        "mechanism": "置换同时改现金和持仓，且换入换出数量不等。",
+        "cognitiveLoad": "三种操作各有自己的状态更新规则，切换时容易套错。",
+        "expectedSteps": "6–10 步",
+        "prototypes": ["buy-back", "price-vs-hold"],
+        "allowedKinds": [],
+        "anchor": { "tx": [2, 4], "tracked": [3, 4], "ops": [2, 3], "swapUsed": null },
+        "mustUse": [],
+        "typicalErrors": [
+          "置换时只算现金变化，漏了持仓净变化",
+          "把换入的货按旧的持仓成本计价"
+        ]
+      }
+    },
+    {
+      "level": 4,
+      "name": "条件与嵌套",
+      "truth": {
+        "trainGoal": "处理蕴含式陈述：前件为假时整句为真，这一点最容易反直觉。",
+        "mechanism": "对每个候选世界求 cond 的真值，特别注意「前件假 → 整句真」。",
+        "cognitiveLoad": "断言本身依赖其他断言的真值，不能独立判定，必须按依赖顺序展开。",
+        "expectedSteps": "12–20 步",
+        "prototypes": ["conditional", "nested-statements"],
+        "allowedKinds": ["honest", "liar", "count", "cond"],
+        "anchor": { "n": [4, 4], "condDepth": [1, 2], "assertCount": [4, 6], "minSurvivors": 2, "k": [1, 3] },
+        "mustUse": ["cond"],
+        "typicalErrors": [
+          "把「如果 A 真那么 B 假」当成「A 真且 B 假」",
+          "前件为假时误判整句为假"
+        ]
+      },
+      "ledger": {
+        "trainGoal": "分批买入后部分卖出，成本口径要自己决定并保持一致。",
+        "mechanism": "多笔不同价买入形成混合成本，卖出时剩余持货的估值基准是个隐含决策。",
+        "cognitiveLoad": "现金、持仓、成本三个量同时变，且成本不写在题面上。",
+        "expectedSteps": "8–12 步",
+        "prototypes": ["batch-buy", "swap"],
+        "allowedKinds": [],
+        "anchor": { "tx": [3, 4], "tracked": [3, 4], "ops": [2, 3], "swapUsed": null },
+        "mustUse": [],
+        "typicalErrors": [
+          "用最后一笔买入价作为全部持仓成本",
+          "卖出时把均价和单笔价混用"
+        ]
+      }
+    },
+    {
+      "level": 5,
+      "name": "多可能世界",
+      "truth": {
+        "trainGoal": "同时维持多个候选世界，直到最后一条信息才收敛。",
+        "mechanism": "cond 与 count 混用，5 人，前期多个候选并行存在，不能过早下判断。",
+        "cognitiveLoad": "并行世界数上限高，且每个世界都有自己的内部一致性要求。",
+        "expectedSteps": "16–28 步",
+        "prototypes": ["multi-constraint", "nested-statements"],
+        "allowedKinds": ["honest", "liar", "count", "cond"],
+        "anchor": { "n": [5, 5], "condDepth": [1, 2], "assertCount": [5, 8], "minSurvivors": 2, "k": [1, 4] },
+        "mustUse": ["cond", "count"],
+        "typicalErrors": [
+          "过早锁定一个世界，后续信息只用来确认而不去推翻",
+          "条件句互相依赖时按书写顺序展开，而非按真值依赖展开"
+        ]
+      },
+      "ledger": {
+        "trainGoal": "买卖换混杂，在框架切换处每个量都要正确交接。",
+        "mechanism": "多种操作交替，每换一次操作类型就要重设一次「哪些量在变」。",
+        "cognitiveLoad": "3–4 个量并行，且操作类型每笔都可能切换。",
+        "expectedSteps": "10–16 步",
+        "prototypes": ["mixed", "swap"],
+        "allowedKinds": [],
+        "anchor": { "tx": [3, 5], "tracked": [4, 4], "ops": [3, 3], "swapUsed": true },
+        "mustUse": ["swap"],
+        "typicalErrors": [
+          "置换后仍按旧持仓数算市值",
+          "混杂序列里漏掉某一笔对现金的影响"
+        ]
+      }
+    }
+  ],
+  "coverageRules": {
+    "maxPlainOnlyRatioPerLevel": 0.5,
+    "plainKinds": ["honest", "liar"],
+    "note": "每级内，只使用 honest/liar 两种断言的题不得超过该级真假话题数的 50%。这条替代不了难度校准，但能防止难度靠堆人数冒充。"
+  }
+}

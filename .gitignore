@@ -1,0 +1,21 @@
+# Android 构建产物
+android/
+local.properties
+*.apk
+*.aab
+*.iml
+.gradle/
+build/
+
+# 依赖与缓存
+node_modules/
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# 临时文件
+*.tmp
+*.log
