@@ -33,7 +33,7 @@
         android:layout_height="1dp"
         android:background="@color/divider" />
 
-    <!-- 随机一题：一行通栏按钮（前端设计 §2） -->
+    <!-- 随机一题 -->
     <Button
         android:id="@+id/btn_random"
         style="@style/Button"
@@ -44,17 +44,7 @@
         android:layout_marginEnd="@dimen/margin_h"
         android:text="@string/random" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingStart="@dimen/margin_h"
-        android:paddingTop="@dimen/gap_row"
-        android:paddingEnd="@dimen/margin_h"
-        android:text="@string/list_hint"
-        android:textColor="@color/text_secondary"
-        android:textSize="@dimen/text_secondary" />
-
-    <!-- 题目列表：顺序 = bank.json 数组顺序，不重排（前端设计 §2） -->
+    <!-- 题目列表：顺序 = bank.json 数组顺序，不重排 -->
     <ListView
         android:id="@+id/list"
         android:layout_width="match_parent"
@@ -64,7 +54,7 @@
         android:divider="@color/divider"
         android:dividerHeight="1dp" />
 
-    <!-- 该级题库为空（前端设计 §8） -->
+    <!-- 该级题库为空 -->
     <TextView
         android:id="@+id/tv_empty"
         android:layout_width="match_parent"

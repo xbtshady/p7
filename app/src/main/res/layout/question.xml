@@ -41,7 +41,7 @@
         android:layout_height="1dp"
         android:background="@color/divider" />
 
-    <!-- 页面整体可滚动，答案区不单独滚动（前端设计 §8） -->
+    <!-- 页面整体可滚动 -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"

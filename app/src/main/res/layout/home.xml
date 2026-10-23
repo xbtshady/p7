@@ -33,7 +33,7 @@
         android:layout_height="1dp"
         android:background="@color/divider" />
 
-    <!-- 五级难度行，代码动态填充（前端设计 §1：五级永远可点，没有锁定态） -->
+    <!-- 五级难度行，代码动态填充 -->
     <LinearLayout
         android:id="@+id/level_container"
         android:layout_width="match_parent"

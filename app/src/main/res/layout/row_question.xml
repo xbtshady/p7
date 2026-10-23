@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 前端设计 §2：行高 56dp，题号（13sp 次要）/ 题型（16sp 正文）/ 上次结果（对绿 错红 未做灰） -->
+<!-- 行高 56dp：题号 / 题型 / 上次结果 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="@dimen/row_h"

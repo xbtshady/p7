@@ -1,5 +1,5 @@
 <resources>
-    <!-- 前端设计文档 §7：浅色固定，不跟随系统深色 -->
+    <!-- 浅色固定，不跟随系统深色 -->
     <color name="text_primary">#1A1A1A</color>
     <color name="text_secondary">#6B6B6B</color>
     <color name="divider">#E3E3E3</color>
