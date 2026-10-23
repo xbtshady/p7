@@ -3,30 +3,28 @@ package com.xbtshady.p7.model;
 import org.json.JSONObject;
 
 /**
- * 一次提交的记录。架构文档 §5：records 只增不覆盖。
- *
- * <p>只有两种情况写：点"提交"、挑战档倒计时归零。
- * 退出 / 返回键 / 杀进程 / 挑战档还停在"第一步"输入阶段 —— 都不算一次作答（§8.1）。
+ * 一次提交。docs/2.0 架构 §5：只增不覆盖；带写入时的 bankVersion。
  */
 public final class Record {
 
     public final String qid;
     public final long ts;
     public final boolean ok;
-    /** 实际用时，毫秒；超时记录等于时限 90000 */
     public final long ms;
-    /** loose / standard / challenge */
     public final String aux;
-    /** 自报卡点：hold / update / convert / null。可回写（超时记录选中卡点后） */
+    /** 废弃：仅兼容旧 progress；新写入恒为 null */
     public String stuck;
+    /** 写入时题库版本；旧数据缺省为 0 */
+    public final int bankVersion;
 
-    public Record(String qid, long ts, boolean ok, long ms, String aux, String stuck) {
+    public Record(String qid, long ts, boolean ok, long ms, String aux, String stuck, int bankVersion) {
         this.qid = qid;
         this.ts = ts;
         this.ok = ok;
         this.ms = ms;
         this.aux = aux;
         this.stuck = stuck;
+        this.bankVersion = bankVersion;
     }
 
     public static Record from(JSONObject o) {
@@ -39,7 +37,8 @@ public final class Record {
                     o.optBoolean("ok", false),
                     o.optLong("ms", 0L),
                     o.optString("aux", "standard"),
-                    stuck);
+                    stuck,
+                    o.optInt("bankVersion", 0));
         } catch (Throwable t) {
             return null;
         }
@@ -54,6 +53,7 @@ public final class Record {
             o.put("ms", ms);
             o.put("aux", aux);
             o.put("stuck", stuck == null ? JSONObject.NULL : stuck);
+            o.put("bankVersion", bankVersion);
         } catch (Throwable ignored) {
         }
         return o;

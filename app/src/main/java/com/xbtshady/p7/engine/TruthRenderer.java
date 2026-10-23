@@ -1,13 +1,10 @@
 package com.xbtshady.p7.engine;
 
-import android.graphics.Typeface;
-import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -23,36 +20,28 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 真假话题型。
+ * 真假话：经典「骑士与无赖」题面。
+ * <pre>
+ * 岛上的人只有两种：骑士总说真话，无赖总说假话。
  *
- * <p>题面：每人一行"名：台词"，约束独立一行加粗（前端设计 §3.2）。
- * <p>作答：每人一行两个并排方框 真/假（单选）；末行"撒谎人数"+数字输入 0–6（§3.4）。
+ * A 说：「…」
+ * B 说：「…」
+ *
+ * 问：谁是骑士，谁是无赖？
+ * </pre>
  */
 public final class TruthRenderer implements QuestionRenderer {
 
-    /** 玩家填的结果。people 为 null 表示未填，liars 为 null 表示人数没填。 */
+    /** people: true=骑士，false=无赖 */
     public static final class Answer {
         public final Map<String, Boolean> people;
-        public final Integer liars;
 
-        public Answer(Map<String, Boolean> people, Integer liars) {
+        public Answer(Map<String, Boolean> people) {
             this.people = people;
-            this.liars = liars;
-        }
-
-        /** 是否所有人都填了 */
-        public boolean allFilled(List<String> names) {
-            if (people == null) return false;
-            for (String n : names) {
-                if (!people.containsKey(n)) return false;
-            }
-            return true;
         }
     }
 
     private static final String TAG_CHOICE = "choice:";
-    private static final String TAG_LIARS = "liars";
-
     private final List<String> names = new ArrayList<>();
 
     @Override
@@ -63,6 +52,12 @@ public final class TruthRenderer implements QuestionRenderer {
         JSONArray people = q.people();
         if (people == null) return;
 
+        int gap = box.getContext().getResources().getDimensionPixelSize(R.dimen.gap_row);
+
+        // 开场：世界观（固定，与经典题一致）
+        addPara(box, box.getContext().getString(R.string.truth_intro), 0);
+
+        // 陈述
         for (int i = 0; i < people.length(); i++) {
             JSONObject p = people.optJSONObject(i);
             if (p == null) continue;
@@ -70,107 +65,105 @@ public final class TruthRenderer implements QuestionRenderer {
             String says = p.optString("says", "");
             if (name.isEmpty()) continue;
             names.add(name);
-
-            TextView tv = new TextView(box.getContext());
-            tv.setLayoutParams(new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            tv.setText(name + "：" + says);
-            tv.setTextColor(box.getContext().getColor(R.color.text_primary));
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                    box.getContext().getResources().getDimension(R.dimen.text_body));
-            tv.setLineSpacing(0, 1.5f);
-            if (i > 0) {
-                ((LinearLayout.LayoutParams) tv.getLayoutParams()).topMargin =
-                        box.getContext().getResources().getDimensionPixelSize(R.dimen.gap_row);
-            }
-            box.addView(tv);
+            addPara(box, box.getContext().getString(R.string.truth_says_line, name, says), gap);
         }
 
-        // 约束独立一行、加粗
-        String constraint = q.constraint();
-        if (!constraint.isEmpty()) {
-            TextView tv = new TextView(box.getContext());
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.topMargin = box.getContext().getResources().getDimensionPixelSize(R.dimen.gap_row);
-            tv.setLayoutParams(lp);
-            tv.setText(constraint);
-            tv.setTypeface(null, Typeface.BOLD);
-            tv.setTextColor(box.getContext().getColor(R.color.text_primary));
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                    box.getContext().getResources().getDimension(R.dimen.text_body));
-            box.addView(tv);
-        }
+        // 设问
+        addPara(box, box.getContext().getString(R.string.truth_ask), gap * 2);
+    }
+
+    private void addPara(ViewGroup box, String text, int topMargin) {
+        TextView tv = new TextView(box.getContext());
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = topMargin;
+        tv.setLayoutParams(lp);
+        tv.setText(text);
+        tv.setTextColor(box.getContext().getColor(R.color.text_primary));
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                box.getContext().getResources().getDimension(R.dimen.text_body));
+        tv.setLineSpacing(0, 1.5f);
+        box.addView(tv);
     }
 
     @Override
     public void renderInput(Question q, ViewGroup box, LayoutInflater inflater) {
         box.removeAllViews();
         int gap = box.getContext().getResources().getDimensionPixelSize(R.dimen.gap_row);
+        boolean twoCol = names.size() >= 7;
 
-        for (String name : names) {
-            LinearLayout row = new LinearLayout(box.getContext());
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.topMargin = gap;
-            row.setLayoutParams(lp);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-
-            TextView nameTv = new TextView(box.getContext());
-            nameTv.setText(name);
-            nameTv.setTextColor(box.getContext().getColor(R.color.text_primary));
-            nameTv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                    box.getContext().getResources().getDimension(R.dimen.text_body));
-            // 名字自适应占满剩余宽度 —— 题库里有人名 5 个字（塞巴斯蒂安），固定宽会截断
-            nameTv.setLayoutParams(new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-            row.addView(nameTv);
-
-            // 真 / 假 两个并排方框（前端设计 §7：选中填强调色）
-            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
-                    box.getContext().getResources().getDimensionPixelSize(R.dimen.button_h) * 2,
-                    box.getContext().getResources().getDimensionPixelSize(R.dimen.button_h));
-            clp.setMarginStart(gap);
-
-            TextView t = makeChoice(box, name, true);
-            t.setLayoutParams(clp);
-            row.addView(t);
-
-            TextView f = makeChoice(box, name, false);
-            f.setLayoutParams(clp);
-            row.addView(f);
-
-            box.addView(row);
+        if (!twoCol) {
+            for (String name : names) {
+                box.addView(makePersonRow(box, name, gap, ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+            return;
         }
 
-        // 末行：撒谎人数
-        LinearLayout liarRow = new LinearLayout(box.getContext());
+        for (int i = 0; i < names.size(); i += 2) {
+            LinearLayout pair = new LinearLayout(box.getContext());
+            LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            plp.topMargin = gap;
+            pair.setLayoutParams(plp);
+            pair.setOrientation(LinearLayout.HORIZONTAL);
+
+            View left = makePersonRow(box, names.get(i), 0, 0);
+            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            left.setLayoutParams(llp);
+            pair.addView(left);
+
+            if (i + 1 < names.size()) {
+                View right = makePersonRow(box, names.get(i + 1), 0, 0);
+                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                rlp.setMarginStart(gap);
+                right.setLayoutParams(rlp);
+                pair.addView(right);
+            }
+            box.addView(pair);
+        }
+    }
+
+    private View makePersonRow(ViewGroup box, String name, int topMargin, int width) {
+        int gap = box.getContext().getResources().getDimensionPixelSize(R.dimen.gap_row);
+        LinearLayout row = new LinearLayout(box.getContext());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                width == 0 ? ViewGroup.LayoutParams.MATCH_PARENT : width,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (topMargin > 0) lp.topMargin = topMargin;
+        row.setLayoutParams(lp);
+        row.setOrientation(LinearLayout.VERTICAL);
+
+        TextView nameTv = new TextView(box.getContext());
+        nameTv.setText(name);
+        nameTv.setTextColor(box.getContext().getColor(R.color.text_primary));
+        nameTv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                box.getContext().getResources().getDimension(R.dimen.text_body));
+        row.addView(nameTv);
+
+        LinearLayout choices = new LinearLayout(box.getContext());
+        choices.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams clpOuter = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = gap;
-        liarRow.setLayoutParams(lp);
-        liarRow.setOrientation(LinearLayout.HORIZONTAL);
-        liarRow.setGravity(Gravity.CENTER_VERTICAL);
+        clpOuter.topMargin = gap / 2;
+        choices.setLayoutParams(clpOuter);
 
-        TextView label = new TextView(box.getContext());
-        label.setText(R.string.liars_count);
-        label.setTextColor(box.getContext().getColor(R.color.text_primary));
-        label.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                box.getContext().getResources().getDimension(R.dimen.text_body));
-        liarRow.addView(label);
+        int btnH = box.getContext().getResources().getDimensionPixelSize(R.dimen.button_h);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(0, btnH, 1f);
 
-        EditText et = new EditText(box.getContext());
-        et.setTag(TAG_LIARS);
-        et.setInputType(InputType.TYPE_CLASS_NUMBER);
-        et.setHint("0");
-        et.setTextColor(box.getContext().getColor(R.color.text_primary));
-        et.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                box.getContext().getResources().getDimension(R.dimen.text_body));
-        et.setPadding(gap, 0, gap, 0);
-        liarRow.addView(et);
+        TextView t = makeChoice(box, name, true);
+        t.setLayoutParams(clp);
+        choices.addView(t);
 
-        box.addView(liarRow);
+        TextView f = makeChoice(box, name, false);
+        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(0, btnH, 1f);
+        flp.setMarginStart(gap);
+        f.setLayoutParams(flp);
+        choices.addView(f);
+
+        row.addView(choices);
+        return row;
     }
 
     private TextView makeChoice(ViewGroup box, String name, boolean value) {
@@ -181,8 +174,7 @@ public final class TruthRenderer implements QuestionRenderer {
         tv.setBackgroundResource(R.drawable.bg_choice);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
                 box.getContext().getResources().getDimension(R.dimen.text_body));
-        tv.setTextColor(box.getContext().getColor(R.color.text_primary));
-        // 选中态切换：同一人的另一格取消选中
+        tv.setTextColor(box.getContext().getResources().getColorStateList(R.color.choice_text, null));
         tv.setOnClickListener(v -> {
             View other = box.findViewWithTag(TAG_CHOICE + name + ":" + !value);
             if (other != null) other.setSelected(false);
@@ -200,20 +192,7 @@ public final class TruthRenderer implements QuestionRenderer {
             if (t != null && t.isSelected()) people.put(name, true);
             else if (f != null && f.isSelected()) people.put(name, false);
         }
-
-        Integer liars = null;
-        View lv = box.findViewWithTag(TAG_LIARS);
-        if (lv instanceof EditText) {
-            String s = ((EditText) lv).getText().toString().trim();
-            if (!s.isEmpty()) {
-                try {
-                    liars = Integer.parseInt(s);
-                } catch (NumberFormatException ignored) {
-                    // 非数字视为未填（前端设计 §8）
-                }
-            }
-        }
-        return new Answer(people, liars);
+        return new Answer(people);
     }
 
     @Override
@@ -221,28 +200,26 @@ public final class TruthRenderer implements QuestionRenderer {
         box.removeAllViews();
         int gap = box.getContext().getResources().getDimensionPixelSize(R.dimen.gap_row);
 
-        // 一行每人结论
         JSONObject truth = q.answerTruth();
         if (truth != null && !names.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < names.size(); i++) {
                 if (i > 0) sb.append("　");
-                sb.append(names.get(i)).append(truth.optBoolean(names.get(i)) ? "真" : "假");
+                boolean knight = truth.optBoolean(names.get(i));
+                sb.append(names.get(i)).append(knight ? "骑士" : "无赖");
             }
-            addLine(box, sb.toString(), gap, 0);
+            addPara(box, sb.toString(), 0);
         }
 
-        // 一段说明
         if (!q.solutionSummary().isEmpty()) {
-            addLine(box, q.solutionSummary(), gap, gap);
-            addDivider(box, gap);
+            addPara(box, q.solutionSummary(), gap);
         }
 
         JSONArray lines = q.solutionLines();
         if (lines != null) {
             for (int i = 0; i < lines.length(); i++) {
                 String s = lines.optString(i, "");
-                if (!s.isEmpty()) addLine(box, s, gap, 0);
+                if (!s.isEmpty()) addPara(box, s, gap);
             }
         }
     }
@@ -258,37 +235,5 @@ public final class TruthRenderer implements QuestionRenderer {
                 }
             }
         }
-        View lv = box.findViewWithTag(TAG_LIARS);
-        if (lv instanceof EditText) {
-            ((EditText) lv).setEnabled(!locked);
-            ((EditText) lv).setFocusable(!locked);
-            ((EditText) lv).setFocusableInTouchMode(!locked);
-        }
-    }
-
-    private void addLine(ViewGroup box, String text, int gap, int topMargin) {
-        TextView tv = new TextView(box.getContext());
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = topMargin;
-        tv.setLayoutParams(lp);
-        tv.setText(text);
-        tv.setTextColor(box.getContext().getColor(R.color.text_secondary));
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                box.getContext().getResources().getDimension(R.dimen.text_body));
-        tv.setLineSpacing(0, 1.5f);
-        tv.setPadding(0, 0, 0, gap);
-        box.addView(tv);
-    }
-
-    private void addDivider(ViewGroup box, int gap) {
-        View v = new View(box.getContext());
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 1);
-        lp.topMargin = gap;
-        lp.bottomMargin = gap;
-        v.setLayoutParams(lp);
-        v.setBackgroundColor(box.getContext().getColor(R.color.divider));
-        box.addView(v);
     }
 }

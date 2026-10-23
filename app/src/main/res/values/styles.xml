@@ -9,7 +9,6 @@
         <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 
-    <!-- 顶部条：白底 + 底部描边 -->
     <style name="TopBar">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">@dimen/row_h</item>
@@ -17,14 +16,14 @@
         <item name="android:orientation">horizontal</item>
         <item name="android:paddingStart">@dimen/margin_h</item>
         <item name="android:paddingEnd">@dimen/margin_h</item>
+        <item name="android:background">@color/surface</item>
     </style>
 
-    <!-- 前端设计文档 §7：按钮高 48dp、圆角 8dp -->
     <style name="Button" parent="Widget.AppCompat.Button">
         <item name="android:minHeight">@dimen/button_h</item>
         <item name="android:textSize">@dimen/text_body</item>
         <item name="android:background">@drawable/bg_button</item>
-        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textColor">@color/text_on_accent</item>
         <item name="android:stateListAnimator">@null</item>
     </style>
 

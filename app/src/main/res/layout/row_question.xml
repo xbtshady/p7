@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 行高 56dp：题号 / 题型 / 上次结果 -->
+<!-- 题号 / 人数 / 状态 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="@dimen/row_h"
@@ -10,23 +10,28 @@
 
     <TextView
         android:id="@+id/tv_id"
-        android:layout_width="120dp"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:fontFamily="monospace"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:textColor="@color/text_secondary"
         android:textSize="@dimen/text_secondary" />
 
     <TextView
-        android:id="@+id/tv_type"
-        android:layout_width="0dp"
+        android:id="@+id/tv_people"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
+        android:paddingStart="@dimen/gap_row"
         android:textColor="@color/text_primary"
         android:textSize="@dimen/text_body" />
 
     <TextView
-        android:id="@+id/tv_result"
+        android:id="@+id/tv_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:minWidth="48dp"
+        android:gravity="end"
+        android:paddingStart="@dimen/gap_row"
         android:textSize="@dimen/text_body" />
 </LinearLayout>

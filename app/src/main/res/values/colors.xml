@@ -1,15 +1,19 @@
 <resources>
-    <!-- 浅色固定，不跟随系统深色 -->
-    <color name="text_primary">#1A1A1A</color>
-    <color name="text_secondary">#6B6B6B</color>
-    <color name="divider">#E3E3E3</color>
-    <color name="accent">#2F6FEB</color>
-    <color name="correct">#1E8E3E</color>
-    <color name="wrong">#C0392B</color>
-    <color name="background">#FFFFFF</color>
+    <!-- 墨色练习纸：冷灰纸底 + 深青墨强调，避开默认蓝白 demo 感 -->
+    <color name="background">#EDEEEA</color>
+    <color name="surface">#F7F7F4</color>
+    <color name="surface_press">#E3E4DF</color>
+    <color name="card_border">#D2D4CE</color>
+    <color name="divider">#D8DAD4</color>
 
-    <!-- 卡片与分区底色：让区块之间有层次，不改变文档规定的文字色 -->
-    <color name="surface">#F7F8FA</color>
-    <color name="surface_press">#EEF0F4</color>
-    <color name="card_border">#E8EAED</color>
+    <color name="text_primary">#1A211C</color>
+    <color name="text_secondary">#5A635C</color>
+    <color name="text_on_accent">#F7F7F4</color>
+
+    <color name="accent">#1E4D45</color>
+    <color name="accent_soft">#D5E4DF</color>
+    <color name="correct">#2F6B45</color>
+    <color name="wrong">#A33B32</color>
+
+    <color name="button_disabled">#B8BCB5</color>
 </resources>

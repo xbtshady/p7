@@ -98,10 +98,16 @@ public final class Question {
         if (truth == null) return false;
         // 键必须与 people 完全一致
         if (truth.length() != names.size()) return false;
+        int falseCount = 0;
         for (String n : names) {
             if (!truth.has(n)) return false;
+            if (!truth.optBoolean(n)) falseCount++;
         }
-        if (!isInt(answer.opt("liars"))) return false;
+        // 2.0：liars 若存在必须与 truth 中 false 个数一致，否则丢弃（禁止纠正入库）
+        if (answer.has("liars")) {
+            if (!isInt(answer.opt("liars"))) return false;
+            if (answer.optInt("liars", -1) != falseCount) return false;
+        }
 
         JSONArray lines = solution.optJSONArray("lines");
         return lines != null && lines.length() > 0;
@@ -178,6 +184,17 @@ public final class Question {
 
     public boolean isTruth() {
         return TYPE_TRUTH.equals(type);
+    }
+
+    /** 人数（题库列表展示） */
+    public int peopleCount() {
+        JSONArray p = people();
+        return p == null ? 0 : p.length();
+    }
+
+    /** 产品池：truth + answer mode */
+    public boolean inProductPool() {
+        return isTruth() && MODE_ANSWER.equals(mode);
     }
 
     /** 展示用的题型名 */

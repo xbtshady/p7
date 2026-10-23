@@ -4,15 +4,13 @@ import android.app.AlertDialog;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
-import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -23,7 +21,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.xbtshady.p7.data.BankRepo;
 import com.xbtshady.p7.data.ProgressStore;
 import com.xbtshady.p7.engine.Grader;
-import com.xbtshady.p7.engine.LedgerRenderer;
 import com.xbtshady.p7.engine.Picker;
 import com.xbtshady.p7.engine.QuestionRenderer;
 import com.xbtshady.p7.engine.TruthRenderer;
@@ -31,31 +28,31 @@ import com.xbtshady.p7.model.Progress;
 import com.xbtshady.p7.model.Question;
 import com.xbtshady.p7.model.Record;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Date;
 import java.util.List;
-import java.util.Set;
+import java.util.Locale;
 
 /**
- * 唯一 Activity，管三页切换（架构文档 §9 / 前端设计 §1）。
- *
- * <pre>
- * 启动 → 读 bank.json + ProgressStore.load()
- *      → HOME     五级列表 + 设置
- *      → LIST     某级题目列表 + 随机一题
- *      → QUESTION 题面 / 作答 / 提交 / 结果 + 答案
- * </pre>
+ * 2.0：底栏概览 / 题库 / 记录 + 全屏题目页。
  */
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "p7";
-    /** 挑战档时限 90 秒（架构文档 §8.1：ms 等于时限 90000） */
-    private static final long CHALLENGE_TIMEOUT_MS = 90_000L;
+    private static final int PAGE_BANK = 30;
+    private static final int PAGE_HISTORY = 50;
+    private static final int[] LEVEL_PEOPLE = {0, 3, 4, 6, 8, 12};
+    private static final long[] CHALLENGE_MS = {
+            0, 90_000, 105_000, 120_000, 150_000, 180_000
+    };
 
-    // 三个辅助档
     private static final String AUX_LOOSE = "loose";
     private static final String AUX_STANDARD = "standard";
     private static final String AUX_CHALLENGE = "challenge";
+
+    private static final String SRC_OVERVIEW = "overview";
+    private static final String SRC_BANK = "bank";
+    private static final String SRC_HISTORY = "history";
 
     private final BankRepo repo = new BankRepo();
     private final ProgressStore store = new ProgressStore();
@@ -64,76 +61,166 @@ public class MainActivity extends AppCompatActivity {
     private Progress progress;
     private String auxTier = AUX_STANDARD;
 
-    // 答题页状态
-    private int level = 1;
+    private enum Tab { OVERVIEW, BANK, HISTORY }
+
+    private Tab tab = Tab.OVERVIEW;
+    private boolean onQuestion;
+
+    /** 题库页自身筛选（不回写概览默认，除分级条跳转外） */
+    private int bankLevel; // 0=鍏ㄩ儴
+    private String bankStatus = Progress.STATUS_ALL;
+    private int bankPage;
+    private int historyPage;
+
+    // 题目页
     private Question current;
     private QuestionRenderer renderer;
+    private String entrySource = SRC_OVERVIEW;
+    private int snapLevel;
+    private String snapStatus = Progress.STATUS_ALL;
     private long startedAtMs;
     private boolean submitted;
-    private boolean timedOut;
     private CountDownTimer timer;
-    private Record pendingRecord;
 
-    private View homeRoot;
-    private View listRoot;
+    private FrameLayout content;
+    private View bottomNav;
+    private View navDivider;
+    private TextView tabOverview;
+    private TextView tabBank;
+    private TextView tabHistory;
+
+    private View overviewRoot;
+    private View bankRoot;
+    private View historyRoot;
     private View questionRoot;
-
-    private enum Page { HOME, LIST, QUESTION }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        applySystemBarInsets(findViewById(android.R.id.content));
+
+        content = findViewById(R.id.content);
+        bottomNav = findViewById(R.id.bottom_nav);
+        navDivider = findViewById(R.id.nav_divider);
+        tabOverview = findViewById(R.id.tab_overview);
+        tabBank = findViewById(R.id.tab_bank);
+        tabHistory = findViewById(R.id.tab_history);
+
+        tabOverview.setOnClickListener(v -> showTab(Tab.OVERVIEW));
+        tabBank.setOnClickListener(v -> showTab(Tab.BANK));
+        tabHistory.setOnClickListener(v -> showTab(Tab.HISTORY));
 
         repo.load(this);
         store.init(this);
-        progress = store.load(repo.bankVersion(), allQuestionIds());
-        auxTier = progress.auxTier;
+        progress = store.load(repo.bankVersion(), repo.allProductIds());
+        auxTier = progress.auxTier == null ? AUX_STANDARD : progress.auxTier;
+        bankLevel = progress.filterLevel; // 0 鍏ㄩ儴鏃剁敤 filterLevel 鍙兘鏄?2锛岄搴撳垵濮嬭窡姒傝榛樿闅惧害
+        if (bankLevel < 0) bankLevel = 0;
+        bankStatus = progress.filterStatus == null ? Progress.STATUS_ALL : progress.filterStatus;
 
         if (repo.status() != BankRepo.Status.OK) {
-            // §4.3 / §4.5：题库异常或版本不匹配时首页提示，不出题
-            showBankProblem();
+            showTab(Tab.OVERVIEW);
             return;
         }
-        showHome();
+        showTab(Tab.OVERVIEW);
     }
 
-    private Set<String> allQuestionIds() {
-        Set<String> ids = new HashSet<>();
-        for (Question q : repo.all()) ids.add(q.id);
-        return ids;
-    }
-
-    private void showBankProblem() {
-        TextView tv = new TextView(this);
-        int msg = repo.status() == BankRepo.Status.MISMATCH ? R.string.bank_mismatch : R.string.bank_error;
-        tv.setText(msg);
-        tv.setTextColor(getColor(R.color.text_secondary));
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
-        tv.setGravity(Gravity.CENTER);
-        tv.setPadding(32, 32, 32, 32);
-        setContentView(tv);
-    }
-
-    // ==================== HOME ====================
-
-    private void showHome() {
-        page = Page.HOME;
-        homeRoot = getLayoutInflater().inflate(R.layout.home, null);
-        setContentView(homeRoot);
-        applySystemBarInsets(homeRoot);
-
-        homeRoot.findViewById(R.id.btn_settings).setOnClickListener(v -> showSettings());
-
-        LinearLayout container = homeRoot.findViewById(R.id.level_container);
-        container.removeAllViews();
-
-        // 前端设计 §1：五级永远可点，没有锁定态
-        for (int lv = 1; lv <= 5; lv++) {
-            container.addView(makeLevelRow(lv));
+    private void showTab(Tab t) {
+        cancelTimer();
+        onQuestion = false;
+        tab = t;
+        bottomNav.setVisibility(View.VISIBLE);
+        navDivider.setVisibility(View.VISIBLE);
+        highlightTabs();
+        content.removeAllViews();
+        switch (t) {
+            case BANK:
+                bankRoot = getLayoutInflater().inflate(R.layout.bank, content, false);
+                content.addView(bankRoot);
+                bindBank();
+                break;
+            case HISTORY:
+                historyRoot = getLayoutInflater().inflate(R.layout.history, content, false);
+                content.addView(historyRoot);
+                bindHistory();
+                break;
+            default:
+                overviewRoot = getLayoutInflater().inflate(R.layout.overview, content, false);
+                content.addView(overviewRoot);
+                bindOverview();
+                break;
         }
     }
 
-    /** 难度行做成卡片：圆角 + 描边 + 按压反馈，卡片之间留 8dp */
+    private void highlightTabs() {
+        int accent = getColor(R.color.accent);
+        int secondary = getColor(R.color.text_secondary);
+        tabOverview.setTextColor(tab == Tab.OVERVIEW ? accent : secondary);
+        tabBank.setTextColor(tab == Tab.BANK ? accent : secondary);
+        tabHistory.setTextColor(tab == Tab.HISTORY ? accent : secondary);
+    }
+
+    // ==================== OVERVIEW ====================
+
+    private void bindOverview() {
+        overviewRoot.findViewById(R.id.btn_settings).setOnClickListener(v -> showSettings());
+
+        TextView err = overviewRoot.findViewById(R.id.tv_overview_error);
+        View practice = overviewRoot.findViewById(R.id.btn_practice);
+        LinearLayout levels = overviewRoot.findViewById(R.id.level_container);
+
+        if (repo.status() != BankRepo.Status.OK) {
+            err.setVisibility(View.VISIBLE);
+            err.setText(repo.status() == BankRepo.Status.MISMATCH
+                    ? R.string.bank_mismatch : R.string.bank_error);
+            practice.setEnabled(false);
+            levels.removeAllViews();
+            overviewRoot.findViewById(R.id.tv_solved_total).setVisibility(View.GONE);
+            overviewRoot.findViewById(R.id.tv_first_rate).setVisibility(View.GONE);
+            overviewRoot.findViewById(R.id.tv_last7).setVisibility(View.GONE);
+            overviewRoot.findViewById(R.id.tv_recent_title).setVisibility(View.GONE);
+            return;
+        }
+        err.setVisibility(View.GONE);
+
+        int solved = progress.solvedTotal(repo.allProductIds());
+        ((TextView) overviewRoot.findViewById(R.id.tv_solved_total))
+                .setText(getString(R.string.solved_total, solved));
+
+        levels.removeAllViews();
+        for (int lv = 1; lv <= 5; lv++) {
+            levels.addView(makeLevelRow(lv));
+        }
+
+        TextView rate = overviewRoot.findViewById(R.id.tv_first_rate);
+        double r = progress.firstAttemptRate(Progress.FIRST_RATE_WINDOW);
+        if (Double.isNaN(r)) {
+            rate.setText(R.string.first_rate_empty);
+        } else {
+            int pct = (int) Math.round(r * 100);
+            int n = Math.min(Progress.FIRST_RATE_WINDOW, uniqueFirstCount());
+            rate.setText(getString(R.string.first_rate, n, pct));
+        }
+        ((TextView) overviewRoot.findViewById(R.id.tv_last7))
+                .setText(getString(R.string.last_7d, progress.submissionsLast7Days()));
+
+        practice.setEnabled(true);
+        practice.setOnClickListener(v -> {
+            int lv = progress.filterLevel;
+            String st = progress.filterStatus == null ? Progress.STATUS_ALL : progress.filterStatus;
+            openRandom(lv, st, SRC_OVERVIEW);
+        });
+
+        bindRecent();
+    }
+
+    private int uniqueFirstCount() {
+        java.util.HashSet<String> s = new java.util.HashSet<>();
+        for (Record r : progress.records) s.add(r.qid);
+        return s.size();
+    }
+
     private View makeLevelRow(int lv) {
         int pad = getResources().getDimensionPixelSize(R.dimen.margin_h);
         int gap = getResources().getDimensionPixelSize(R.dimen.gap_row);
@@ -149,271 +236,382 @@ public class MainActivity extends AppCompatActivity {
         row.setPadding(pad, pad, pad, pad);
         row.setMinimumHeight(getResources().getDimensionPixelSize(R.dimen.row_h));
 
+        LinearLayout leftCol = new LinearLayout(this);
+        leftCol.setOrientation(LinearLayout.VERTICAL);
+        leftCol.setLayoutParams(new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
         TextView left = new TextView(this);
         left.setText("L" + lv);
         left.setTextColor(getColor(R.color.text_primary));
         left.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
-        left.setLayoutParams(new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        row.addView(left);
+        leftCol.addView(left);
 
-        // 不同题号已做数 / 该级总题数
-        List<Question> pool = repo.ofLevel(lv);
-        int done = progress.doneCountOf(repo.idsOfLevel(lv));
+        TextView hint = new TextView(this);
+        hint.setText(getString(R.string.level_hint, LEVEL_PEOPLE[lv]));
+        hint.setTextColor(getColor(R.color.text_secondary));
+        hint.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                getResources().getDimension(R.dimen.text_secondary));
+        leftCol.addView(hint);
+        row.addView(leftCol);
+
+        int total = repo.countOfLevel(lv);
+        int done = progress.solvedCountOf(repo.idsOfLevel(lv));
         TextView right = new TextView(this);
-        right.setText(done + "/" + pool.size());
+        right.setText(done + "/" + total);
         right.setTextColor(getColor(R.color.text_secondary));
         right.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
         row.addView(right);
 
-        row.setOnClickListener(v -> showList(lv));
+        row.setOnClickListener(v -> {
+            progress.filterLevel = lv;
+            store.save(progress);
+            bankLevel = lv;
+            bankStatus = Progress.STATUS_ALL;
+            bankPage = 0;
+            showTab(Tab.BANK);
+        });
         return row;
     }
 
-    // ==================== LIST ====================
-
-    private void showList(int lv) {
-        page = Page.LIST;
-        level = lv;
-        listRoot = getLayoutInflater().inflate(R.layout.list, null);
-        setContentView(listRoot);
-        applySystemBarInsets(listRoot);
-
-        TextView title = listRoot.findViewById(R.id.tv_title);
-        title.setText("L" + lv);
-
-        listRoot.findViewById(R.id.btn_back).setOnClickListener(v -> showHome());
-
-        final List<Question> pool = repo.ofLevel(lv);
-        Button random = listRoot.findViewById(R.id.btn_random);
-        if (pool.isEmpty()) {
-            // §8：该级题库为空 → 随机按钮置灰
-            random.setEnabled(false);
-        } else {
-            random.setOnClickListener(v -> {
-                Question q = picker.pick(pool, null);
-                if (q != null) showQuestion(q);
-            });
+    private void bindRecent() {
+        LinearLayout box = overviewRoot.findViewById(R.id.recent_container);
+        TextView title = overviewRoot.findViewById(R.id.tv_recent_title);
+        box.removeAllViews();
+        List<Record> recent = progress.recent(10);
+        if (recent.isEmpty()) {
+            title.setVisibility(View.GONE);
+            return;
         }
-
-        ListView list = listRoot.findViewById(R.id.list);
-        TextView empty = listRoot.findViewById(R.id.tv_empty);
-        if (pool.isEmpty()) {
-            list.setVisibility(View.GONE);
-            empty.setVisibility(View.VISIBLE);
-        } else {
-            list.setVisibility(View.VISIBLE);
-            empty.setVisibility(View.GONE);
-            list.setAdapter(new QuestionAdapter(pool));
-            list.setOnItemClickListener((parent, view, position, id) -> showQuestion(pool.get(position)));
+        title.setVisibility(View.VISIBLE);
+        SimpleDateFormat fmt = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
+        int gap = getResources().getDimensionPixelSize(R.dimen.gap_row);
+        for (Record rec : recent) {
+            TextView tv = new TextView(this);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.bottomMargin = gap;
+            tv.setLayoutParams(lp);
+            String ok = getString(rec.ok ? R.string.correct : R.string.wrong);
+            tv.setText(fmt.format(new Date(rec.ts)) + "  " + rec.qid + "  " + ok);
+            tv.setTextColor(getColor(R.color.text_primary));
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                    getResources().getDimension(R.dimen.text_body));
+            tv.setPadding(0, gap, 0, gap);
+            tv.setOnClickListener(v -> openQuestion(rec.qid, SRC_OVERVIEW,
+                    progress.filterLevel, Progress.STATUS_ALL));
+            box.addView(tv);
         }
     }
 
-    /** 行 = 题号 + 类型 + 上次结果（前端设计 §2） */
-    private final class QuestionAdapter extends BaseAdapter {
+    // ==================== BANK ====================
+
+    private void bindBank() {
+        LinearLayout levelChips = bankRoot.findViewById(R.id.level_chips);
+        LinearLayout statusChips = bankRoot.findViewById(R.id.status_chips);
+        levelChips.removeAllViews();
+        statusChips.removeAllViews();
+
+        addChip(levelChips, getString(R.string.filter_all), bankLevel == 0, v -> {
+            bankLevel = 0;
+            bankPage = 0;
+            bindBank();
+        });
+        for (int lv = 1; lv <= 5; lv++) {
+            final int L = lv;
+            addChip(levelChips, "L" + lv, bankLevel == lv, v -> {
+                bankLevel = L;
+                bankPage = 0;
+                bindBank();
+            });
+        }
+
+        addChip(statusChips, getString(R.string.filter_all),
+                Progress.STATUS_ALL.equals(bankStatus), v -> {
+                    bankStatus = Progress.STATUS_ALL;
+                    bankPage = 0;
+                    bindBank();
+                });
+        addChip(statusChips, getString(R.string.status_todo),
+                Progress.STATUS_TODO.equals(bankStatus), v -> {
+                    bankStatus = Progress.STATUS_TODO;
+                    bankPage = 0;
+                    bindBank();
+                });
+        addChip(statusChips, getString(R.string.status_tried),
+                Progress.STATUS_TRIED.equals(bankStatus), v -> {
+                    bankStatus = Progress.STATUS_TRIED;
+                    bankPage = 0;
+                    bindBank();
+                });
+        addChip(statusChips, getString(R.string.status_solved),
+                Progress.STATUS_SOLVED.equals(bankStatus), v -> {
+                    bankStatus = Progress.STATUS_SOLVED;
+                    bankPage = 0;
+                    bindBank();
+                });
+
+        int total = repo.countMatching(bankLevel, bankStatus, progress);
+        int pages = Math.max(1, (total + PAGE_BANK - 1) / PAGE_BANK);
+        if (bankPage >= pages) bankPage = pages - 1;
+        if (bankPage < 0) bankPage = 0;
+
+        List<Question> page = repo.page(bankLevel, bankStatus, progress,
+                bankPage * PAGE_BANK, PAGE_BANK);
+
+        Button random = bankRoot.findViewById(R.id.btn_random);
+        ListView list = bankRoot.findViewById(R.id.list);
+        TextView empty = bankRoot.findViewById(R.id.tv_empty);
+        View pager = bankRoot.findViewById(R.id.pager);
+
+        if (total == 0) {
+            random.setEnabled(false);
+            list.setVisibility(View.GONE);
+            empty.setVisibility(View.VISIBLE);
+            pager.setVisibility(View.GONE);
+        } else {
+            random.setEnabled(true);
+            random.setOnClickListener(v -> openRandom(bankLevel, bankStatus, SRC_BANK));
+            list.setVisibility(View.VISIBLE);
+            empty.setVisibility(View.GONE);
+            pager.setVisibility(View.VISIBLE);
+            list.setAdapter(new BankAdapter(page));
+            list.setOnItemClickListener((p, view, pos, id) ->
+                    openQuestion(page.get(pos).id, SRC_BANK, bankLevel, bankStatus));
+
+            ((TextView) bankRoot.findViewById(R.id.tv_page))
+                    .setText(getString(R.string.page_fmt, bankPage + 1, pages));
+            bankRoot.findViewById(R.id.btn_prev).setOnClickListener(v -> {
+                if (bankPage > 0) {
+                    bankPage--;
+                    bindBank();
+                }
+            });
+            bankRoot.findViewById(R.id.btn_next).setOnClickListener(v -> {
+                if (bankPage + 1 < pages) {
+                    bankPage++;
+                    bindBank();
+                }
+            });
+        }
+    }
+
+    private void addChip(LinearLayout parent, String label, boolean selected, View.OnClickListener click) {
+        TextView tv = new TextView(this);
+        int gap = getResources().getDimensionPixelSize(R.dimen.gap_row);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                getResources().getDimensionPixelSize(R.dimen.button_h));
+        lp.setMarginEnd(gap);
+        tv.setLayoutParams(lp);
+        tv.setText(label);
+        tv.setGravity(Gravity.CENTER);
+        tv.setPadding(gap * 2, 0, gap * 2, 0);
+        tv.setBackgroundResource(R.drawable.bg_choice);
+        tv.setSelected(selected);
+        tv.setTextColor(getColor(R.color.text_primary));
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
+        tv.setOnClickListener(click);
+        parent.addView(tv);
+    }
+
+    private final class BankAdapter extends BaseAdapter {
         private final List<Question> items;
 
-        QuestionAdapter(List<Question> items) {
+        BankAdapter(List<Question> items) {
             this.items = items;
         }
 
-        @Override
-        public int getCount() {
-            return items.size();
-        }
-
-        @Override
-        public Object getItem(int position) {
-            return items.get(position);
-        }
-
-        @Override
-        public long getItemId(int position) {
-            return position;
-        }
+        @Override public int getCount() { return items.size(); }
+        @Override public Object getItem(int position) { return items.get(position); }
+        @Override public long getItemId(int position) { return position; }
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             View v = convertView != null ? convertView
                     : getLayoutInflater().inflate(R.layout.row_question, parent, false);
             Question q = items.get(position);
-
             ((TextView) v.findViewById(R.id.tv_id)).setText(q.id);
-            ((TextView) v.findViewById(R.id.tv_type)).setText(q.typeLabel());
-
-            TextView r = v.findViewById(R.id.tv_result);
-            Boolean ok = progress.firstResultOf(q.id);   // 取最早一条，重做不改这个显示
-            if (ok == null) {
-                r.setText(R.string.not_done);
-                r.setTextColor(getColor(R.color.text_secondary));
-            } else if (ok) {
-                r.setText(R.string.correct);
-                r.setTextColor(getColor(R.color.correct));
+            ((TextView) v.findViewById(R.id.tv_people))
+                    .setText(getString(R.string.people_count, q.peopleCount()));
+            TextView st = v.findViewById(R.id.tv_status);
+            Progress.QStatus qs = progress.statusOf(q.id);
+            if (qs == Progress.QStatus.SOLVED) {
+                st.setText(R.string.status_solved);
+                st.setTextColor(getColor(R.color.correct));
+            } else if (qs == Progress.QStatus.TRIED) {
+                st.setText(R.string.status_tried);
+                st.setTextColor(getColor(R.color.text_secondary));
             } else {
-                r.setText(R.string.wrong);
-                r.setTextColor(getColor(R.color.wrong));
+                st.setText(R.string.status_todo);
+                st.setTextColor(getColor(R.color.text_secondary));
             }
             return v;
         }
     }
 
+    // ==================== HISTORY ====================
+
+    private void bindHistory() {
+        int total = progress.historyCount();
+        int pages = Math.max(1, (total + PAGE_HISTORY - 1) / PAGE_HISTORY);
+        if (historyPage >= pages) historyPage = pages - 1;
+        if (historyPage < 0) historyPage = 0;
+
+        ListView list = historyRoot.findViewById(R.id.list);
+        TextView empty = historyRoot.findViewById(R.id.tv_empty);
+        View pager = historyRoot.findViewById(R.id.pager);
+
+        if (total == 0) {
+            list.setVisibility(View.GONE);
+            empty.setVisibility(View.VISIBLE);
+            pager.setVisibility(View.GONE);
+            return;
+        }
+        list.setVisibility(View.VISIBLE);
+        empty.setVisibility(View.GONE);
+        pager.setVisibility(View.VISIBLE);
+
+        List<Record> page = progress.historyPage(historyPage * PAGE_HISTORY, PAGE_HISTORY);
+        list.setAdapter(new HistoryAdapter(page));
+        list.setOnItemClickListener((p, view, pos, id) -> {
+            Record rec = page.get(pos);
+            // 璁板綍杩涘叆锛氬揩鐓?= 鍏ㄩ儴闅惧害+鍏ㄩ儴鐘舵€?            openQuestion(rec.qid, SRC_HISTORY, 0, Progress.STATUS_ALL);
+        });
+
+        ((TextView) historyRoot.findViewById(R.id.tv_page))
+                .setText(getString(R.string.page_fmt, historyPage + 1, pages));
+        historyRoot.findViewById(R.id.btn_prev).setOnClickListener(v -> {
+            if (historyPage > 0) {
+                historyPage--;
+                bindHistory();
+            }
+        });
+        historyRoot.findViewById(R.id.btn_next).setOnClickListener(v -> {
+            if (historyPage + 1 < pages) {
+                historyPage++;
+                bindHistory();
+            }
+        });
+    }
+
+    private final class HistoryAdapter extends BaseAdapter {
+        private final List<Record> items;
+        private final SimpleDateFormat fmt =
+                new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
+
+        HistoryAdapter(List<Record> items) {
+            this.items = items;
+        }
+
+        @Override public int getCount() { return items.size(); }
+        @Override public Object getItem(int position) { return items.get(position); }
+        @Override public long getItemId(int position) { return position; }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            View v = convertView != null ? convertView
+                    : getLayoutInflater().inflate(R.layout.row_record, parent, false);
+            Record rec = items.get(position);
+            ((TextView) v.findViewById(R.id.tv_when)).setText(fmt.format(new Date(rec.ts)));
+            TextView ok = v.findViewById(R.id.tv_ok);
+            ok.setText(rec.ok ? R.string.correct : R.string.wrong);
+            ok.setTextColor(getColor(rec.ok ? R.color.correct : R.color.wrong));
+            ((TextView) v.findViewById(R.id.tv_qid)).setText(rec.qid);
+            ((TextView) v.findViewById(R.id.tv_meta)).setText(recordMeta(rec));
+            return v;
+        }
+    }
+
+    private boolean isTimeoutMs(Record rec) {
+        Question q = repo.byId(rec.qid);
+        if (q == null) return false;
+        long lim = CHALLENGE_MS[Math.min(5, Math.max(1, q.level))];
+        return AUX_CHALLENGE.equals(rec.aux) && rec.ms == lim;
+    }
+
     // ==================== QUESTION ====================
 
+    private void openRandom(int level, String status, String source) {
+        List<Question> pool = repo.matching(level, status, progress);
+        Question q = picker.pick(pool, progress.lastQid);
+        if (q == null) {
+            Toast.makeText(this, R.string.pick_fail, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        openQuestion(q.id, source, level, status);
+    }
+
+    private void openQuestion(String qid, String source, int snapLv, String snapSt) {
+        Question q = repo.byId(qid);
+        if (q == null || !q.inProductPool()) {
+            Toast.makeText(this, R.string.retired, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        entrySource = source;
+        snapLevel = snapLv;
+        snapStatus = snapSt == null ? Progress.STATUS_ALL : snapSt;
+        showQuestion(q);
+    }
+
     private void showQuestion(Question q) {
-        page = Page.QUESTION;
         cancelTimer();
+        onQuestion = true;
         current = q;
         submitted = false;
-        timedOut = false;
-        pendingRecord = null;
         startedAtMs = System.currentTimeMillis();
+        progress.lastQid = q.id;
+        store.save(progress);
 
-        renderer = q.isTruth() ? new TruthRenderer() : new LedgerRenderer();
+        renderer = new TruthRenderer();
 
-        questionRoot = getLayoutInflater().inflate(R.layout.question, null);
-        setContentView(questionRoot);
-        applySystemBarInsets(questionRoot);
+        bottomNav.setVisibility(View.GONE);
+        navDivider.setVisibility(View.GONE);
+        content.removeAllViews();
+        questionRoot = getLayoutInflater().inflate(R.layout.question, content, false);
+        content.addView(questionRoot);
 
-        TextView top = questionRoot.findViewById(R.id.tv_top);
-        top.setText(q.id + " · 辅助：" + auxLabel());
-
-        questionRoot.findViewById(R.id.btn_exit).setOnClickListener(v -> showList(level));
+        ((TextView) questionRoot.findViewById(R.id.tv_top))
+                .setText(q.id + " 路 " + auxLabel());
+        questionRoot.findViewById(R.id.btn_close).setOnClickListener(v -> closeQuestion());
 
         ViewGroup promptBox = questionRoot.findViewById(R.id.box_prompt);
         ViewGroup inputBox = questionRoot.findViewById(R.id.box_input);
-        ViewGroup firstBox = questionRoot.findViewById(R.id.box_first_step);
         Button submit = questionRoot.findViewById(R.id.btn_submit);
 
         renderer.renderPrompt(q, promptBox, getLayoutInflater());
         renderer.renderInput(q, inputBox, getLayoutInflater());
-
-        // 三档差异（前端设计 §4）
-        if (AUX_CHALLENGE.equals(auxTier)) {
-            setupChallenge(firstBox, inputBox, submit);
-        } else if (AUX_STANDARD.equals(auxTier)) {
-            setupStandard(promptBox, inputBox, submit);
-        } else {
-            // 宽松：常驻可回看、直接可填、无计时
-            renderer.setLocked(inputBox, false);
-            submit.setVisibility(View.VISIBLE);
-            submit.setOnClickListener(v -> onSubmit());
-        }
+        renderer.setLocked(inputBox, false);
 
         submit.setVisibility(View.VISIBLE);
+        submit.setEnabled(true);
+        submit.setText(R.string.submit);
+        submit.setOnClickListener(v -> onSubmit(false));
+
+        questionRoot.findViewById(R.id.box_result).setVisibility(View.GONE);
+        questionRoot.findViewById(R.id.box_answer).setVisibility(View.GONE);
+        bindAttempts(q.id);
+
+        if (AUX_CHALLENGE.equals(auxTier)) {
+            startTimer(q.level);
+        } else {
+            questionRoot.findViewById(R.id.tv_timer).setVisibility(View.GONE);
+        }
     }
 
-    /** 标准档：初始可见，点"开始作答"后折叠为一行"题面已收起"，不可再展开；折叠后解锁 */
-    private void setupStandard(ViewGroup promptBox, ViewGroup inputBox, Button submit) {
-        renderer.setLocked(inputBox, true);
-
-        // 折叠按钮放在题面区下方
-        Button start = new Button(this);
-        start.setText(R.string.start_answering);
-        start.setBackgroundResource(R.drawable.bg_button_secondary);
-        start.setTextColor(getColor(R.color.text_primary));
-        start.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
-        int gap = getResources().getDimensionPixelSize(R.dimen.gap_row);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                getResources().getDimensionPixelSize(R.dimen.button_h));
-        lp.topMargin = gap;
-        start.setLayoutParams(lp);
-        start.setAllCaps(false);
-        promptBox.addView(start);
-
-        submit.setEnabled(false);
-        start.setOnClickListener(v -> {
-            // 折叠：替换为一行的只读文字，不可再展开
-            promptBox.removeAllViews();
-            TextView collapsed = new TextView(this);
-            collapsed.setText(R.string.prompt_collapsed);
-            collapsed.setTextColor(getColor(R.color.text_secondary));
-            collapsed.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                    getResources().getDimension(R.dimen.text_body));
-            promptBox.addView(collapsed);
-
-            renderer.setLocked(inputBox, false);
-            submit.setEnabled(true);
-            submit.setOnClickListener(x -> onSubmit());
-            startedAtMs = System.currentTimeMillis();
-        });
-    }
-
-    /** 挑战档：题面常驻可见，先填第一步才解锁作答，01:30 倒计时 */
-    private void setupChallenge(ViewGroup firstBox, ViewGroup inputBox, Button submit) {
-        renderer.setLocked(inputBox, true);
-        firstBox.setVisibility(View.VISIBLE);
-
-        int gap = getResources().getDimensionPixelSize(R.dimen.gap_row);
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        EditText et = new EditText(this);
-        et.setHint(R.string.first_step_hint);
-        et.setTextColor(getColor(R.color.text_primary));
-        et.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
-        LinearLayout.LayoutParams elp = new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        et.setLayoutParams(elp);
-        row.addView(et);
-
-        Button start = new Button(this);
-        start.setText(R.string.first_step_start);
-        start.setBackgroundResource(R.drawable.bg_button);
-        start.setTextColor(getResources().getColor(android.R.color.white));
-        start.setAllCaps(false);
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                getResources().getDimensionPixelSize(R.dimen.button_h));
-        slp.setMarginStart(gap);
-        start.setLayoutParams(slp);
-        row.addView(start);
-        firstBox.addView(row);
-
-        // 空值或纯空格时按钮置灰（前端设计 §3.3）
-        start.setEnabled(false);
-        et.addTextChangedListener(new android.text.TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
-            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {
-                start.setEnabled(s != null && s.toString().trim().length() > 0);
-            }
-            @Override public void afterTextChanged(android.text.Editable s) {}
-        });
-
-        submit.setEnabled(false);
-        start.setOnClickListener(v -> {
-            String first = et.getText().toString().trim();
-            // 本区替换为一行只读文字（玩家输入原文）
-            firstBox.removeAllViews();
-            TextView kept = new TextView(this);
-            kept.setText(first);
-            kept.setTextColor(getColor(R.color.text_primary));
-            kept.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
-            kept.setLineSpacing(0, 1.5f);
-            firstBox.addView(kept);
-
-            renderer.setLocked(inputBox, false);
-            submit.setEnabled(true);
-            submit.setOnClickListener(x -> onSubmit());
-            startTimer();
-        });
-    }
-
-    private void startTimer() {
+    private void startTimer(int level) {
         cancelTimer();
-        startedAtMs = System.currentTimeMillis();
+        long limit = CHALLENGE_MS[Math.min(5, Math.max(1, level))];
         final TextView tv = questionRoot.findViewById(R.id.tv_timer);
         tv.setVisibility(View.VISIBLE);
         tv.setTextColor(getColor(R.color.text_primary));
-        tv.setText("01:30");
+        startedAtMs = System.currentTimeMillis();
 
-        timer = new CountDownTimer(CHALLENGE_TIMEOUT_MS, 1000) {
+        timer = new CountDownTimer(limit, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
                 long sec = millisUntilFinished / 1000;
-                tv.setText(String.format("%02d:%02d", sec / 60, sec % 60));
-                // 剩 10 秒变色（前端设计 §4）
+                tv.setText(String.format(Locale.getDefault(), "%02d:%02d", sec / 60, sec % 60));
                 if (millisUntilFinished <= 10_000) {
                     tv.setTextColor(getColor(R.color.wrong));
                 }
@@ -422,7 +620,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFinish() {
                 tv.setText("00:00");
-                onTimeout();
+                onSubmit(true);
             }
         }.start();
     }
@@ -434,75 +632,39 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /** 挑战档倒计时归零：自动提交，按答错处理（架构文档 §8.1） */
-    private void onTimeout() {
-        if (submitted) return;
-        timedOut = true;
-        submitted = true;
-
-        ViewGroup inputBox = questionRoot.findViewById(R.id.box_input);
-        Button submit = questionRoot.findViewById(R.id.btn_submit);
-
-        // 已填内容原样保留，控件置为不可编辑
-        renderer.setLocked(inputBox, true);
-
-        // §8.1：超时按答错处理，ms 等于时限
-        boolean ok = false;
-        long ms = CHALLENGE_TIMEOUT_MS;
-
-        Record rec = new Record(current.id, System.currentTimeMillis(), ok, ms, auxTier, null);
-        progress.records.add(rec);
-        progress.lastQid = current.id;
-        progress.trim();
-        store.save(progress);
-        pendingRecord = rec;
-
-        // 提交按钮换成"重做本题"
-        submit.setText(R.string.redo);
-        submit.setEnabled(true);
-        submit.setOnClickListener(v -> redoQuestion());
-
-        renderResult(ok, "timeout");
-    }
-
-    private void onSubmit() {
-        if (submitted || current == null) return;
+    private void onSubmit(boolean timeout) {
+        if (submitted || current == null || questionRoot == null) return;
         submitted = true;
         cancelTimer();
 
         ViewGroup inputBox = questionRoot.findViewById(R.id.box_input);
-        Object answer = renderer.readAnswer(inputBox);
+        Button submit = questionRoot.findViewById(R.id.btn_submit);
+        renderer.setLocked(inputBox, true);
+        submit.setVisibility(View.GONE);
 
         boolean ok;
-        String signal;
-        if (current.isTruth()) {
+        long ms;
+        if (timeout) {
+            ok = false;
+            ms = CHALLENGE_MS[Math.min(5, Math.max(1, current.level))];
+        } else {
+            Object answer = renderer.readAnswer(inputBox);
             Grader.Result r = Grader.gradeTruth(current, (TruthRenderer.Answer) answer);
             ok = r.ok;
-            signal = r.signal;
-        } else {
-            Grader.Result r = Grader.gradeLedger(current, (Integer) answer);
-            ok = r.ok;
-            signal = r.signal;
+            ms = System.currentTimeMillis() - startedAtMs;
         }
 
-        long ms = System.currentTimeMillis() - startedAtMs;
-        Record rec = new Record(current.id, System.currentTimeMillis(), ok, ms, auxTier, null);
+        Record rec = new Record(current.id, System.currentTimeMillis(), ok, ms, auxTier,
+                null, repo.bankVersion());
         progress.records.add(rec);
-        progress.lastQid = current.id;
         progress.trim();
         store.save(progress);
-        pendingRecord = rec;
 
-        renderResult(ok, signal);
+        renderResult(ok);
+        bindAttempts(current.id);
     }
 
-    /**
-     * 结果区（前端设计 §3.5）。
-     *
-     * <p><b>答案默认不显示</b>：提交后只给判定和卡点，玩家想看答案再点开。
-     * 直接把答案摊在面前会让人没有回推的余地，与"脑内推演"的练习目的相悖。
-     */
-    private void renderResult(boolean ok, String signal) {
+    private void renderResult(boolean ok) {
         ViewGroup box = questionRoot.findViewById(R.id.box_result);
         ViewGroup answerBox = questionRoot.findViewById(R.id.box_answer);
         box.setVisibility(View.VISIBLE);
@@ -510,7 +672,6 @@ public class MainActivity extends AppCompatActivity {
         answerBox.setVisibility(View.GONE);
         answerBox.removeAllViews();
 
-        // 第一段 判定：只四个字，不给分数、不给用时
         TextView verdict = new TextView(this);
         verdict.setText(ok ? R.string.correct : R.string.wrong);
         verdict.setTextColor(getColor(ok ? R.color.correct : R.color.wrong));
@@ -518,16 +679,10 @@ public class MainActivity extends AppCompatActivity {
         verdict.setTypeface(null, Typeface.BOLD);
         box.addView(verdict);
 
-        // 第二段 卡点：仅答错时
-        if (!ok) {
-            box.addView(buildStuckSection());
-        }
-
-        // 第三段 查看答案（答案折叠在这里）
         Button showAnswer = new Button(this);
         showAnswer.setText(R.string.show_answer);
         showAnswer.setBackgroundResource(R.drawable.bg_button);
-        showAnswer.setTextColor(getResources().getColor(android.R.color.white));
+        showAnswer.setTextColor(getColor(R.color.text_on_accent));
         showAnswer.setAllCaps(false);
         showAnswer.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
         LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
@@ -546,19 +701,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         box.addView(showAnswer);
-
-        // 第四段 下一题 / 重做本题
         box.addView(buildActionRow());
-
-        Button submit = questionRoot.findViewById(R.id.btn_submit);
-        submit.setEnabled(false);
     }
 
-    /** 答案内容：标题 + 按题型渲染的完整答案 */
     private void renderAnswerInto(ViewGroup box) {
         box.removeAllViews();
         int gap = getResources().getDimensionPixelSize(R.dimen.gap_row);
-
         TextView title = new TextView(this);
         title.setText(R.string.answer_title);
         title.setTextColor(getColor(R.color.text_primary));
@@ -566,22 +714,19 @@ public class MainActivity extends AppCompatActivity {
         title.setTypeface(null, Typeface.BOLD);
         box.addView(title);
 
-        ViewGroup body = new LinearLayout(this);
-        body.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        ((LinearLayout) body).setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams blp = (LinearLayout.LayoutParams) body.getLayoutParams();
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         blp.topMargin = gap;
         body.setLayoutParams(blp);
         box.addView(body);
         renderer.renderSolution(current, body, getLayoutInflater());
     }
 
-    /** 下一题 / 重做本题 */
     private View buildActionRow() {
         int gap = getResources().getDimensionPixelSize(R.dimen.margin_h);
         int rowGap = getResources().getDimensionPixelSize(R.dimen.gap_row);
-
         LinearLayout btns = new LinearLayout(this);
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -594,11 +739,18 @@ public class MainActivity extends AppCompatActivity {
         next.setBackgroundResource(R.drawable.bg_button_secondary);
         next.setTextColor(getColor(R.color.text_primary));
         next.setAllCaps(false);
-        next.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
-        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(0,
-                getResources().getDimensionPixelSize(R.dimen.button_h), 1f);
-        next.setLayoutParams(nlp);
-        next.setOnClickListener(v -> nextQuestion());
+        next.setLayoutParams(new LinearLayout.LayoutParams(0,
+                getResources().getDimensionPixelSize(R.dimen.button_h), 1f));
+        next.setOnClickListener(v -> {
+            List<Question> pool = repo.matching(snapLevel, snapStatus, progress);
+            Question q = picker.pick(pool, current != null ? current.id : null);
+            if (q == null) {
+                Toast.makeText(this, R.string.pick_fail, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // 缁ф壙 entrySource
+            openQuestion(q.id, entrySource, snapLevel, snapStatus);
+        });
         btns.addView(next);
 
         Button redo = new Button(this);
@@ -606,121 +758,79 @@ public class MainActivity extends AppCompatActivity {
         redo.setBackgroundResource(R.drawable.bg_button_secondary);
         redo.setTextColor(getColor(R.color.text_primary));
         redo.setAllCaps(false);
-        redo.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(0,
                 getResources().getDimensionPixelSize(R.dimen.button_h), 1f);
         rlp.setMarginStart(gap);
         redo.setLayoutParams(rlp);
-        redo.setOnClickListener(v -> redoQuestion());
+        redo.setOnClickListener(v -> {
+            if (current != null) showQuestion(current);
+        });
         btns.addView(redo);
-
         return btns;
     }
 
-    /** 卡点三选一：选中即记录，不必提交，可随时改（前端设计 §3.5） */
-    private View buildStuckSection() {
-        int gap = getResources().getDimensionPixelSize(R.dimen.gap_block);
-        int gapRow = getResources().getDimensionPixelSize(R.dimen.gap_row);
-
-        LinearLayout box = new LinearLayout(this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = gap;
-        box.setLayoutParams(lp);
-        box.setOrientation(LinearLayout.VERTICAL);
-
-        TextView title = new TextView(this);
-        title.setText(R.string.stuck_title);
-        title.setTextColor(getColor(R.color.text_primary));
-        title.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
-        box.addView(title);
-
-        LinearLayout row = new LinearLayout(this);
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        rlp.topMargin = gapRow;
-        row.setLayoutParams(rlp);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-
-        String[] keys = {"hold", "update", "convert"};
-        int[] labels = {R.string.stuck_hold, R.string.stuck_update, R.string.stuck_convert};
-        int[] notes = {R.string.stuck_hold_note, R.string.stuck_update_note, R.string.stuck_convert_note};
-
-        LinearLayout cols = new LinearLayout(this);
-        cols.setOrientation(LinearLayout.HORIZONTAL);
-        for (int i = 0; i < keys.length; i++) {
-            LinearLayout col = new LinearLayout(this);
-            col.setOrientation(LinearLayout.VERTICAL);
-            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            if (i > 0) clp.setMarginStart(gapRow);
-            col.setLayoutParams(clp);
-
-            Button b = new Button(this);
-            b.setText(labels[i]);
-            b.setBackgroundResource(R.drawable.bg_choice);
-            b.setTextColor(getColor(R.color.text_primary));
-            b.setAllCaps(false);
-            b.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
-            b.setLayoutParams(new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    getResources().getDimensionPixelSize(R.dimen.button_h)));
-            final String key = keys[i];
-            b.setOnClickListener(v -> {
-                // 选中即记录，可随时改：回写到本条记录的 stuck 字段
-                if (pendingRecord != null) pendingRecord.stuck = key;
-                store.save(progress);
-                b.setSelected(true);
-            });
-
-            TextView note = new TextView(this);
-            note.setText(notes[i]);
-            note.setTextColor(getColor(R.color.text_secondary));
-            note.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                    getResources().getDimension(R.dimen.text_secondary));
-            note.setLineSpacing(0, 1.5f);
-
-            col.addView(b);
-            col.addView(note);
-            cols.addView(col);
-        }
-        row.addView(cols);
-        box.addView(row);
-        return box;
-    }
-
-    private void nextQuestion() {
-        List<Question> pool = repo.ofLevel(level);
-        Question q = picker.pick(pool, current != null ? current.id : null);
-        if (q == null) {
-            Toast.makeText(this, R.string.empty_level, Toast.LENGTH_SHORT).show();
-            showList(level);
+    /** 本题提交历史（新→旧），无记录则隐藏。不展示当时作答内容。 */
+    private void bindAttempts(String qid) {
+        if (questionRoot == null) return;
+        ViewGroup box = questionRoot.findViewById(R.id.box_attempts);
+        box.removeAllViews();
+        List<Record> list = progress.recordsOf(qid, 50);
+        if (list.isEmpty()) {
+            box.setVisibility(View.GONE);
             return;
         }
-        showQuestion(q);
+        box.setVisibility(View.VISIBLE);
+
+        TextView title = new TextView(this);
+        title.setText(R.string.attempts_title);
+        title.setTextColor(getColor(R.color.text_primary));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.text_body));
+        title.setTypeface(null, Typeface.BOLD);
+        box.addView(title);
+
+        SimpleDateFormat fmt = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
+        int gap = getResources().getDimensionPixelSize(R.dimen.gap_row);
+        for (Record rec : list) {
+            View row = getLayoutInflater().inflate(R.layout.row_record, box, false);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.topMargin = gap;
+            row.setLayoutParams(lp);
+            row.setPadding(0, row.getPaddingTop(), 0, row.getPaddingBottom());
+            ((TextView) row.findViewById(R.id.tv_when)).setText(fmt.format(new Date(rec.ts)));
+            TextView ok = row.findViewById(R.id.tv_ok);
+            ok.setText(rec.ok ? R.string.correct : R.string.wrong);
+            ok.setTextColor(getColor(rec.ok ? R.color.correct : R.color.wrong));
+            row.findViewById(R.id.tv_qid).setVisibility(View.GONE);
+            ((TextView) row.findViewById(R.id.tv_meta)).setText(recordMeta(rec));
+            box.addView(row);
+        }
     }
 
-    /** 重做：清空作答、复位题面、答案区收起、重新计时；追加一条新记录（前端设计 §3.5） */
-    private void redoQuestion() {
-        if (current != null) showQuestion(current);
+    private void closeQuestion() {
+        cancelTimer();
+        onQuestion = false;
+        if (SRC_BANK.equals(entrySource)) showTab(Tab.BANK);
+        else if (SRC_HISTORY.equals(entrySource)) showTab(Tab.HISTORY);
+        else showTab(Tab.OVERVIEW);
     }
 
-    // ==================== 设置 ====================
+    // ==================== 璁剧疆 ====================
 
     private void showSettings() {
         final String[] keys = {AUX_LOOSE, AUX_STANDARD, AUX_CHALLENGE};
-        String[] labels = {getString(R.string.aux_loose), getString(R.string.aux_standard),
-                getString(R.string.aux_challenge)};
+        String[] labels = {
+                getString(R.string.aux_loose),
+                getString(R.string.aux_standard),
+                getString(R.string.aux_challenge)
+        };
         int checked = 1;
         for (int i = 0; i < keys.length; i++) {
             if (keys[i].equals(auxTier)) checked = i;
         }
-
-        // 版本信息只读一行：数据 v1 · 题库 vN（前端设计 §5）
         new AlertDialog.Builder(this)
                 .setTitle(R.string.aux_tier)
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    // 立即生效，从下一题起算（前端设计 §5）
                     auxTier = keys[which];
                     progress.auxTier = auxTier;
                     store.save(progress);
@@ -731,30 +841,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String auxLabel() {
-        if (AUX_LOOSE.equals(auxTier)) return getString(R.string.aux_loose);
-        if (AUX_CHALLENGE.equals(auxTier)) return getString(R.string.aux_challenge);
+        return auxLabelOf(auxTier);
+    }
+
+    private String auxLabelOf(String aux) {
+        if (AUX_LOOSE.equals(aux)) return getString(R.string.aux_loose);
+        if (AUX_CHALLENGE.equals(aux)) return getString(R.string.aux_challenge);
         return getString(R.string.aux_standard);
     }
 
-    // ==================== 返回键 ====================
-
-    private Page page = Page.HOME;
+    /** 记录行次要信息：强度；挑战超时则附「超时」。不展示耗时。 */
+    private String recordMeta(Record rec) {
+        String meta = auxLabelOf(rec.aux);
+        if (!rec.ok && isTimeoutMs(rec)) {
+            meta = meta + "  ·  " + getString(R.string.timeout_mark);
+        }
+        return meta;
+    }
 
     @Override
     public void onBackPressed() {
-        // 前端设计 §8：答题页 → 列表；列表 → 首页；首页 → 退出 app
-        switch (page) {
-            case QUESTION:
-                // 退出不算一次作答，不写记录（§8.1）
-                cancelTimer();
-                showList(level);
-                break;
-            case LIST:
-                showHome();
-                break;
-            default:
-                super.onBackPressed();
-                break;
+        if (onQuestion) {
+            closeQuestion();
+        } else {
+            super.onBackPressed();
         }
     }
 
@@ -764,13 +874,6 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    /**
-     * 状态栏 / 导航栏内边距。
-     *
-     * <p>Android 15 对 targetSdk 35+ 强制 edge-to-edge，windowOptOutEdgeToEdgeEnforcement
-     * 在部分系统上不生效（真机实测内容仍被状态栏盖住），所以不依赖主题属性，
-     * 直接把系统栏 + 刘海的内边距套到根布局上 —— 所有版本行为一致。
-     */
     private void applySystemBarInsets(View root) {
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(
@@ -779,7 +882,6 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
             return androidx.core.view.WindowInsetsCompat.CONSUMED;
         });
-        // view 尚未 attach 时 listener 会在 attach 后收到回调，这里主动触发一次
         androidx.core.view.ViewCompat.requestApplyInsets(root);
     }
 }

@@ -370,7 +370,7 @@ def to_question(item, qid, level):
     people = [{"name": cn[n], "says": claim_cn(nodes[n], cn)} for n in names]
 
     lines = ["把 %d 个人的真假组合全部代进去（共 %d 种），"
-             "只有一组能让每个人的话都和他的身份对上。"
+             "只有一组能让「说真话者句句真、撒谎者句句假」同时成立。"
              % (len(names), 2 ** len(names))]
     for n in names:
         t = official[n]
@@ -393,7 +393,8 @@ def to_question(item, qid, level):
         "prompt": {
             "people": people,
             # 数据集的题解本来就唯一，不需要额外约束 —— 写中性提示，不泄露答案
-            "constraint": "每人的话和他的身份都对得上，只有这一种分法",
+            # App 题面用固定经典开场+设问；constraint 仅作数据备注
+            "constraint": "骑士总说真话，无赖总说假话；判定每人身份，唯一解",
         },
         "answer": {
             "truth": {cn[n]: official[n] for n in names},
