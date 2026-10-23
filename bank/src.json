@@ -1,5 +1,5 @@
 {
-  "bankVersion": 3,
+  "bankVersion": 4,
   "questions": [
     {
       "id": "L1-T1-001",
@@ -1632,6 +1632,81 @@
         }
       ],
       "closePrice": 1700
+    },
+    {
+      "id": "L1-T1-006",
+      "type": "truth",
+      "level": 1,
+      "prototype": "cross-accuse",
+      "intendedLiars": 1,
+      "people": [
+        {
+          "name": "A",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "B"
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        },
+        {
+          "name": "C",
+          "claims": [
+            {
+              "kind": "liar",
+              "target": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L5-T2-005",
+      "type": "ledger",
+      "level": 5,
+      "prototype": "mixed",
+      "question": "net",
+      "open": {
+        "cash": 12000,
+        "hold": 3,
+        "price": 1000
+      },
+      "tx": [
+        {
+          "op": "buy",
+          "qty": 2,
+          "price": 1100,
+          "note": "第一批"
+        },
+        {
+          "op": "buy",
+          "qty": 1,
+          "price": 1300,
+          "note": "第二批"
+        },
+        {
+          "op": "swap",
+          "give": 3,
+          "take": 2,
+          "cash": 600,
+          "note": "补差价"
+        },
+        {
+          "op": "sell",
+          "qty": 2,
+          "price": 1600
+        }
+      ],
+      "closePrice": 1500
     }
   ]
 }

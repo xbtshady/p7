@@ -1,7 +1,10 @@
 /**
  * 结构搜索：为各级真假话题找「结构合格」的断言组合。
- * 合格 = 自洽解 >= 2 且 k 只命中 1 组 且 可删断言 <= maxDroppable 且 闸门数 >= minGates
- * 用法：node bank/probe.js [level]
+ * 合格 = 自洽解 >= 2 且 k 只命中 1 组 且 可删断言 <= maxDrop 且 闸门数 >= minGate
+ * 用法：node bank/probe.js [level] [limit] [--diag] [--noself] [--cfg='{"2":{"n":5}}']
+ *   --noself  排除自指断言（A 说「A 说真话」这类同义反复）
+ *   --cfg     按原型覆盖某级配置：n / claimRange / kinds / maxDrop / minGate
+ * 注意：可删断言为 0 的结构不存在（已穷举验证），maxDrop 别设 0。
  */
 const fs = require('fs');
 const path = require('path');
@@ -163,6 +166,9 @@ function* structures(n, claimRange, kinds, maxCondDepth, maxTotal) {
         return { name: nm, claims: sel.slice() };
       });
       if (people.some(p => p.claims.length === 0)) continue;
+      if (NOSELF && people.some(p => p.claims.some(c =>
+        (c.target && c.target === p.name) ||
+        (c.if && c.if.target === p.name) || (c.then && c.then.target === p.name)))) continue;
       yield people;
     }
   }
@@ -176,8 +182,18 @@ const LEVELS = {
   5: { n: 5, claimRange: [1, 2], kinds: ['honest', 'liar', 'count', 'cond'], condDepth: 1, maxDrop: 1, minGate: 2 }
 };
 
+// 按原型定制搜索：--cfg='{"2":{"kinds":["honest","liar"],"maxDrop":2}}'
+const cfgArg = process.argv.find(a => a.startsWith('--cfg='));
+if (cfgArg) {
+  const override = JSON.parse(cfgArg.slice('--cfg='.length));
+  for (const [lv, cfg] of Object.entries(override)) {
+    LEVELS[Number(lv)] = { ...LEVELS[Number(lv)], ...cfg };
+  }
+}
+
 const wantLevel = process.argv[2] ? Number(process.argv[2]) : null;
 const DIAG = process.argv.includes("--diag");
+const NOSELF = process.argv.includes("--noself");
 let stat={raw:0,sol2:0,kuniq:0,gate:0,drop:0,mech:0};
 const limit = process.argv[3] ? Number(process.argv[3]) : 12;
 
